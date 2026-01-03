@@ -1,23 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6965db;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#c084fc;stop-opacity:1" />
+    <linearGradient id="darkFrame" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#312e81"/>
     </linearGradient>
-    <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#f472b6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#6965db;stop-opacity:1" />
+    <linearGradient id="glowStroke" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="50%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#f472b6"/>
     </linearGradient>
+    <linearGradient id="accentStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <!-- Canvas/Frame -->
-  <rect x="8" y="8" width="48" height="48" rx="12" fill="url(#grad1)" />
-  <!-- Inner canvas -->
-  <rect x="14" y="14" width="36" height="36" rx="8" fill="white" fill-opacity="0.95"/>
-  <!-- Brush stroke 1 - diagonal -->
-  <path d="M22 42 Q32 28 42 22" stroke="url(#grad2)" stroke-width="4" stroke-linecap="round" fill="none"/>
-  <!-- Brush stroke 2 - curve -->
-  <path d="M24 26 Q28 32 36 30" stroke="#6965db" stroke-width="3" stroke-linecap="round" fill="none"/>
-  <!-- Dot accent -->
-  <circle cx="40" cy="38" r="3" fill="#c084fc"/>
+  
+  <!-- Dark frame with subtle shadow -->
+  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#darkFrame)"/>
+  
+  <!-- Inner subtle border -->
+  <rect x="10" y="10" width="44" height="44" rx="10" fill="none" stroke="#4c1d95" stroke-width="1" stroke-opacity="0.4"/>
+  
+  <!-- Primary flowing brush stroke -->
+  <path d="M18 46 C26 34, 34 26, 46 16" stroke="url(#glowStroke)" stroke-width="5" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+  
+  <!-- Secondary accent curve -->
+  <path d="M20 24 Q28 32 40 28" stroke="url(#accentStroke)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  
+  <!-- Highlight dot with glow -->
+  <circle cx="42" cy="40" r="4" fill="#f472b6" filter="url(#glow)"/>
+  <circle cx="42" cy="40" r="2" fill="#fce7f3"/>
+  
+  <!-- Small accent dot -->
+  <circle cx="24" cy="38" r="2" fill="#818cf8" opacity="0.8"/>
 </svg>
-
