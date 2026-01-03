@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import './style.css'
+import { vTooltip } from './directives/tooltip'
 
 // Router configuration
 const router = createRouter({
@@ -25,6 +26,9 @@ const router = createRouter({
 // Create and mount app
 const app = createApp(App)
 const pinia = createPinia()
+
+// Register global directives
+app.directive('tooltip', vTooltip)
 
 app.use(pinia)
 app.use(router)

@@ -17,7 +17,7 @@ const emit = defineEmits<{
   <button
     class="toolbar-button"
     :class="{ 'active': active }"
-    :title="`${label} (${shortcut})`"
+    v-tooltip.right="`${label} (${shortcut})`"
     @click="emit('click')"
   >
     <ToolIcon :name="icon" class="w-4 h-4" />

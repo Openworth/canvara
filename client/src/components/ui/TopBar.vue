@@ -97,7 +97,7 @@ onUnmounted(() => {
             :key="collab.userId"
             class="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-white text-[10px] font-medium"
             :style="{ backgroundColor: collab.color }"
-            :title="collab.username"
+            v-tooltip.bottom="collab.username"
           >
             {{ collab.username.charAt(0).toUpperCase() }}
           </div>
@@ -137,7 +137,7 @@ onUnmounted(() => {
       <!-- Keyboard shortcuts button -->
       <button
         class="toolbar-button panel-glass"
-        title="Keyboard shortcuts (?)"
+        v-tooltip.bottom="'Keyboard shortcuts (?)'"
         @click="showKeyboardShortcutsModal = true"
       >
         <ToolIcon name="keyboard" class="w-4 h-4" />
@@ -146,7 +146,7 @@ onUnmounted(() => {
       <!-- Theme toggle -->
       <button
         class="toolbar-button panel-glass"
-        title="Toggle dark mode"
+        v-tooltip.bottom="'Toggle dark mode'"
         @click="appStore.toggleDarkMode()"
       >
         <ToolIcon
@@ -219,7 +219,7 @@ onUnmounted(() => {
           'connecting': appStore.connectionStatus === 'connecting',
           'disconnected': appStore.connectionStatus === 'disconnected',
         }"
-        :title="appStore.connectionStatus"
+        v-tooltip.bottom="appStore.connectionStatus"
       />
     </div>
   </div>

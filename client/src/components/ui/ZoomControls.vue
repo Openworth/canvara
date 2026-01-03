@@ -33,7 +33,7 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
     <!-- Zoom out -->
     <button
       class="toolbar-button !w-7 !h-7"
-      title="Zoom out (Ctrl+-)"
+      v-tooltip="'Zoom out (Ctrl+-)'"
       @click="canvasStore.zoomOut()"
     >
       <ToolIcon name="minus" class="w-3.5 h-3.5" />
@@ -43,7 +43,7 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
     <button
       class="px-2 py-1 min-w-[48px] text-center text-xs font-medium rounded-md transition-colors duration-150 hover:bg-[var(--color-toolbar-hover)]"
       style="color: var(--color-text-primary);"
-      title="Reset zoom (Ctrl+0)"
+      v-tooltip="'Reset zoom (Ctrl+0)'"
       @click="canvasStore.resetZoom()"
     >
       {{ zoomPercent }}%
@@ -52,7 +52,7 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
     <!-- Zoom in -->
     <button
       class="toolbar-button !w-7 !h-7"
-      title="Zoom in (Ctrl++)"
+      v-tooltip="'Zoom in (Ctrl++)'"
       @click="canvasStore.zoomIn()"
     >
       <ToolIcon name="plus" class="w-3.5 h-3.5" />
@@ -65,7 +65,7 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
     <button
       class="toolbar-button !w-7 !h-7"
       :class="{ 'active': canvasStore.appState.showGrid }"
-      :title="canvasStore.appState.showGrid ? 'Hide grid & disable snap' : 'Show grid & enable snap'"
+      v-tooltip="canvasStore.appState.showGrid ? 'Hide grid & disable snap' : 'Show grid & enable snap'"
       @click="canvasStore.toggleGrid()"
     >
       <ToolIcon name="grid" class="w-3.5 h-3.5" />

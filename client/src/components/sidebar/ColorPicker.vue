@@ -157,7 +157,7 @@ onUnmounted(() => {
             class="color-swatch transparent-swatch"
             :class="{ 'selected': isTransparent }"
             @click="selectColor('transparent')"
-            title="Transparent"
+            v-tooltip.left="'Transparent'"
           >
             <span class="checkerboard" />
             <svg v-if="isTransparent" class="check-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -173,7 +173,7 @@ onUnmounted(() => {
             :class="{ 'selected': color === value, 'is-light': color === '#ffffff' }"
             :style="{ backgroundColor: color }"
             @click="selectColor(color)"
-            :title="color"
+            v-tooltip.left="color"
           >
             <svg v-if="color === value" class="check-icon" :class="{ 'dark-check': color === '#ffffff' || color === '#66a80f' || color === '#f08c00' }" width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2.5 6L5 8.5L9.5 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

@@ -127,7 +127,7 @@ onUnmounted(() => {
         class="toolbar-button"
         :class="{ 'opacity-40 cursor-not-allowed': !canvasStore.canUndo }"
         :disabled="!canvasStore.canUndo"
-        title="Undo (Ctrl+Z)"
+        v-tooltip.right="'Undo (Ctrl+Z)'"
         @click="canvasStore.undo()"
       >
         <ToolIcon name="undo" class="w-4 h-4" />
@@ -136,7 +136,7 @@ onUnmounted(() => {
         class="toolbar-button"
         :class="{ 'opacity-40 cursor-not-allowed': !canvasStore.canRedo }"
         :disabled="!canvasStore.canRedo"
-        title="Redo (Ctrl+Shift+Z)"
+        v-tooltip.right="'Redo (Ctrl+Shift+Z)'"
         @click="canvasStore.redo()"
       >
         <ToolIcon name="redo" class="w-4 h-4" />

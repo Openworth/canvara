@@ -2,6 +2,7 @@
 import { useAppStore } from './stores/app'
 import { useCanvasStore } from './stores/canvas'
 import { onMounted, watch } from 'vue'
+import Tooltip from './components/ui/Tooltip.vue'
 
 const appStore = useAppStore()
 const canvasStore = useCanvasStore()
@@ -44,4 +45,5 @@ watch(() => appStore.isDarkMode, (isDark) => {
 
 <template>
   <router-view />
+  <Tooltip />
 </template>

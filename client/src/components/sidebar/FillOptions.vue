@@ -27,7 +27,7 @@ const styles: { value: FillStyle; icon: string }[] = [
         class="flex-1 py-1.5 flex items-center justify-center rounded-md transition-colors duration-150"
         :class="value === s.value ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
         :style="value !== s.value ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
-        :title="s.value"
+        v-tooltip.left="s.value"
         @click="emit('change', s.value)"
       >
         <!-- None -->

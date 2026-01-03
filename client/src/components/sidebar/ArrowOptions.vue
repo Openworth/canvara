@@ -48,7 +48,7 @@ function setEndArrowhead(value: ArrowHead | null) {
           class="p-1.5 rounded-md transition-colors duration-150 flex items-center justify-center min-w-[28px] min-h-[28px]"
           :class="startArrowhead === option.value ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
           :style="startArrowhead !== option.value ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
-          :title="option.label"
+          v-tooltip.left="option.label"
           @click="setStartArrowhead(option.value)"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -86,7 +86,7 @@ function setEndArrowhead(value: ArrowHead | null) {
           class="p-1.5 rounded-md transition-colors duration-150 flex items-center justify-center min-w-[28px] min-h-[28px]"
           :class="endArrowhead === option.value ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
           :style="endArrowhead !== option.value ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
-          :title="option.label"
+          v-tooltip.left="option.label"
           @click="setEndArrowhead(option.value)"
         >
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
