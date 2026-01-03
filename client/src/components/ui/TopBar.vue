@@ -77,7 +77,7 @@ onUnmounted(() => {
 
       <!-- Logo -->
       <div class="panel-glass px-2 py-1.5 flex items-center gap-2">
-        <img src="/logo-icon.svg" alt="Canvara" class="w-6 h-6" />
+        <img :src="appStore.isDarkMode ? '/logo-icon.svg' : '/logo-icon-light.svg'" alt="Canvara" class="w-6 h-6" />
         <span class="text-sm font-semibold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
           Canvara
         </span>
@@ -183,7 +183,7 @@ onUnmounted(() => {
 
       <!-- Logo/Brand - pill style -->
       <div class="brand-pill">
-        <img src="/logo-icon.svg" alt="Canvara" class="brand-icon" />
+        <img :src="appStore.isDarkMode ? '/logo-icon.svg' : '/logo-icon-light.svg'" alt="Canvara" class="brand-icon" />
         <span class="brand-text">Canvara</span>
       </div>
     </div>

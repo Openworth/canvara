@@ -7,6 +7,7 @@ import { Renderer } from '../../engine/renderer'
 import { screenToCanvas, getCommonBounds, normalizeElement, isPointInRect, rotatePoint } from '../../engine/math'
 import { getElementAtPoint, getElementsInBounds, getTransformHandleAtPoint, getLineEndpointAtPoint, getCursorForHandle } from '../../engine/hitTest'
 import { findBindableElement, createBinding } from '../../engine/binding'
+import { useTouch } from '../../composables/useTouch'
 import TextInput from './TextInput.vue'
 import EmptyCanvasHints from './EmptyCanvasHints.vue'
 import type { ExcalidrawElement, Point, TransformHandle, PointBinding } from '../../types'
@@ -55,8 +56,58 @@ const isShiftPressed = ref(false)
 const isMobile = ref(false)
 
 function checkMobile() {
-  isMobile.value = window.innerWidth < 768
+  isMobile.value = window.innerWidth < 768 || 'ontouchstart' in window
 }
+
+// Pinch-to-zoom state
+const pinchStartZoom = ref(1)
+const pinchStartScrollX = ref(0)
+const pinchStartScrollY = ref(0)
+const isPinching = ref(false)
+
+// Initialize pinch-to-zoom using touch composable
+useTouch(
+  () => canvasRef.value,
+  {
+    onPinchStart: () => {
+      // Store the starting zoom and scroll when pinch begins
+      pinchStartZoom.value = canvasStore.zoom
+      pinchStartScrollX.value = canvasStore.appState.scrollX
+      pinchStartScrollY.value = canvasStore.appState.scrollY
+      isPinching.value = true
+    },
+    onPinchMove: (scale: number, center: Point) => {
+      if (!canvasRef.value) return
+      
+      // Calculate new zoom level
+      const newZoom = Math.max(0.1, Math.min(10, pinchStartZoom.value * scale))
+      
+      // Get the center point in screen coordinates relative to canvas
+      const rect = canvasRef.value.getBoundingClientRect()
+      const centerX = center.x - rect.left
+      const centerY = center.y - rect.top
+      
+      // Calculate the point under the pinch center in canvas coordinates (using start zoom)
+      const canvasX = (centerX - pinchStartScrollX.value) / pinchStartZoom.value
+      const canvasY = (centerY - pinchStartScrollY.value) / pinchStartZoom.value
+      
+      // Set new zoom
+      canvasStore.setZoom(newZoom)
+      
+      // Adjust scroll so the pinch center stays fixed
+      const newScrollX = centerX - canvasX * newZoom
+      const newScrollY = centerY - canvasY * newZoom
+      canvasStore.setScroll(newScrollX, newScrollY)
+    },
+    onPinchEnd: () => {
+      isPinching.value = false
+    },
+    onTwoFingerPan: (delta: Point) => {
+      // Pan the canvas with two-finger drag
+      canvasStore.pan(delta.x, delta.y)
+    },
+  }
+)
 
 // Initialize renderer
 onMounted(() => {
@@ -180,8 +231,8 @@ function getCanvasPoint(e: MouseEvent | TouchEvent): Point {
 function handlePointerDown(e: PointerEvent) {
   if (e.button !== 0 && e.button !== 1) return
 
-  // Don't process if we're editing text
-  if (isEditingText.value) return
+  // Don't process if we're editing text or pinching
+  if (isEditingText.value || isPinching.value) return
 
   const point = getCanvasPoint(e)
   startPoint.value = point
@@ -246,7 +297,7 @@ function handleSelectionStart(point: Point, addToSelection: boolean) {
     if (selectedElements.length === 1) {
       const el = selectedElements[0]
       if (el.type === 'line' || el.type === 'arrow') {
-        const endpointHandle = getLineEndpointAtPoint(el, point, canvasStore.zoom)
+        const endpointHandle = getLineEndpointAtPoint(el, point, canvasStore.zoom, isMobile.value)
         if (endpointHandle) {
           activeHandle.value = endpointHandle
           isResizing.value = true
@@ -270,7 +321,7 @@ function handleSelectionStart(point: Point, addToSelection: boolean) {
     if (bounds) {
       // For single element, use its rotation angle for handle detection
       const angle = selectedElements.length === 1 ? selectedElements[0].angle || 0 : 0
-      const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle)
+      const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle, isMobile.value)
       if (handle) {
         activeHandle.value = handle
         isResizing.value = true
@@ -473,6 +524,9 @@ function handleDrawStart(point: Point) {
 
 // Pointer move handler
 function handlePointerMove(e: PointerEvent) {
+  // Skip if pinching (handled by touch composable)
+  if (isPinching.value) return
+
   const point = getCanvasPoint(e)
   currentPoint.value = point
   
@@ -538,7 +592,7 @@ function updateCursor(point: Point) {
     if (selectedElements.length === 1) {
       const el = selectedElements[0]
       if (el.type === 'line' || el.type === 'arrow') {
-        const endpointHandle = getLineEndpointAtPoint(el, point, canvasStore.zoom)
+        const endpointHandle = getLineEndpointAtPoint(el, point, canvasStore.zoom, isMobile.value)
         if (endpointHandle) {
           cursorStyle.value = getCursorForHandle(endpointHandle)
           return
@@ -554,7 +608,7 @@ function updateCursor(point: Point) {
       if (selectedElements.length === 1 && (selectedElements[0].type === 'line' || selectedElements[0].type === 'arrow')) {
         // Don't show regular handles for lines
       } else {
-        const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle)
+        const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle, isMobile.value)
         if (handle) {
           cursorStyle.value = getCursorForHandle(handle)
           return

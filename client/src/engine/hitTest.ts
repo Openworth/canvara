@@ -10,6 +10,10 @@ import {
 
 const HIT_THRESHOLD = 10
 
+// Mobile devices need larger touch targets for better usability
+// This multiplier is applied to handle hit areas on mobile (invisible, does not affect rendering)
+const MOBILE_TOUCH_MULTIPLIER = 3
+
 // Test if a point hits an element
 export function hitTestElement(
   element: ExcalidrawElement,
@@ -206,9 +210,12 @@ export function getTransformHandleAtPoint(
   bounds: { x: number; y: number; width: number; height: number },
   point: Point,
   zoom: number,
-  angle: number = 0
+  angle: number = 0,
+  isMobile: boolean = false
 ): TransformHandle | null {
-  const handleSize = HANDLE_SIZE / zoom
+  // On mobile, use larger invisible touch targets for better usability
+  const touchMultiplier = isMobile ? MOBILE_TOUCH_MULTIPLIER : 1
+  const handleSize = (HANDLE_SIZE / zoom) * touchMultiplier
   const { x, y, width, height } = bounds
   
   // If there's rotation, transform the point to the element's local coordinate system
@@ -249,12 +256,15 @@ export function getTransformHandleAtPoint(
 export function getLineEndpointAtPoint(
   element: ExcalidrawElement,
   point: Point,
-  zoom: number
+  zoom: number,
+  isMobile: boolean = false
 ): TransformHandle | null {
   if (!element.points || element.points.length < 2) return null
   if (element.type !== 'line' && element.type !== 'arrow') return null
 
-  const handleSize = HANDLE_SIZE / zoom + 4 / zoom // Slightly larger hit area
+  // On mobile, use larger invisible touch targets for better usability
+  const touchMultiplier = isMobile ? MOBILE_TOUCH_MULTIPLIER : 1
+  const handleSize = (HANDLE_SIZE / zoom + 4 / zoom) * touchMultiplier
 
   // Check start point
   const startX = element.x + element.points[0].x
