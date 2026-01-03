@@ -258,8 +258,64 @@ function handlePointerDown(e: PointerEvent) {
 
   // Hand tool behavior
   if (canvasStore.activeTool === 'hand') {
-    // On mobile: smart pan/select - check if touching an element
+    // On mobile: smart pan/select/resize - check handles first, then elements
     if (isMobile.value) {
+      const selectedElements = canvasStore.selectedElements
+      
+      // First, check if touching a resize handle on already-selected elements
+      if (selectedElements.length > 0) {
+        // Check for line/arrow endpoint handles first
+        if (selectedElements.length === 1) {
+          const el = selectedElements[0]
+          if (el.type === 'line' || el.type === 'arrow') {
+            const endpointHandle = getLineEndpointAtPoint(el, point, canvasStore.zoom, isMobile.value)
+            if (endpointHandle) {
+              isMobileSmartDrag.value = true
+              activeHandle.value = endpointHandle
+              isResizing.value = true
+              startElementBounds.value = { x: el.x, y: el.y, width: el.width, height: el.height }
+              startElementDimensions.value = new Map([
+                [el.id, { 
+                  x: el.x, 
+                  y: el.y, 
+                  width: el.width, 
+                  height: el.height,
+                  points: el.points ? [...el.points.map(p => ({ ...p }))] : undefined
+                }]
+              ])
+              return
+            }
+          }
+        }
+
+        // Check for regular transform handles (for shapes)
+        const bounds = getCommonBounds(selectedElements)
+        if (bounds) {
+          const angle = selectedElements.length === 1 ? selectedElements[0].angle || 0 : 0
+          // Skip regular transform handles for lines/arrows
+          if (!(selectedElements.length === 1 && (selectedElements[0].type === 'line' || selectedElements[0].type === 'arrow'))) {
+            const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle, isMobile.value)
+            if (handle) {
+              isMobileSmartDrag.value = true
+              activeHandle.value = handle
+              isResizing.value = true
+              startElementBounds.value = { ...bounds }
+              startElementDimensions.value = new Map(
+                selectedElements.map(el => [el.id, { 
+                  x: el.x, 
+                  y: el.y, 
+                  width: el.width, 
+                  height: el.height,
+                  fontSize: el.type === 'text' ? el.fontSize : undefined
+                }])
+              )
+              return
+            }
+          }
+        }
+      }
+      
+      // Then check if touching an element to select/drag it
       const element = getElementAtPoint(canvasStore.visibleElements, point)
       if (element) {
         // Touching an element - select it and start dragging
