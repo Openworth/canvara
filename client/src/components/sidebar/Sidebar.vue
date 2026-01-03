@@ -85,12 +85,14 @@ function handleDragEnd() {
     if (sheetState.value === 'expanded') {
       sheetState.value = 'peek'
     } else if (sheetState.value === 'peek') {
-      sheetState.value = 'collapsed'
+      // Dragging down from peek - dismiss completely
+      dismissSheet()
     }
   } else {
     // Snap to nearest state
     if (currentHeight < PEEK_HEIGHT / 2) {
-      sheetState.value = 'collapsed'
+      // Snap to collapsed - dismiss completely
+      dismissSheet()
     } else if (currentHeight < (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
       sheetState.value = 'peek'
     } else {
@@ -99,6 +101,15 @@ function handleDragEnd() {
   }
   
   isDragging.value = false
+}
+
+// Dismiss the sheet completely by resetting to hand tool
+function dismissSheet() {
+  sheetState.value = 'collapsed'
+  // Reset to hand tool (default mobile tool) to hide the sheet completely
+  // This clears selection and switches away from drawing tools
+  canvasStore.clearSelection()
+  canvasStore.setActiveTool('hand')
 }
 
 function toggleSheet() {
