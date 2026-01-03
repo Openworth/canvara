@@ -34,9 +34,10 @@ export const useCollaborationStore = defineStore('collaboration', () => {
   const maxReconnectAttempts = 5
   const reconnectDelay = 1000
   
-  // Cursor throttle
+  // Cursor throttle - using requestAnimationFrame for smooth updates
   let cursorThrottleTimeout: ReturnType<typeof setTimeout> | null = null
-  const cursorThrottleMs = 50
+  let pendingCursor: Point | null = null
+  const cursorThrottleMs = 16 // ~60fps for smooth cursor updates
   
   // Computed
   const isConnected = computed(() => ws.value?.readyState === WebSocket.OPEN)
@@ -98,7 +99,7 @@ export const useCollaborationStore = defineStore('collaboration', () => {
       appStore.setConnectionStatus('disconnected')
       
       // Attempt to reconnect
-      if (reconnectAttempts.value < maxReconnectAttempts) {
+      if (reconnectAttempts.value < maxReconnectAttempts && roomId.value) {
         reconnectAttempts.value++
         setTimeout(() => {
           if (roomId.value) {
@@ -114,13 +115,16 @@ export const useCollaborationStore = defineStore('collaboration', () => {
   }
   
   // Handle incoming messages
-  function handleMessage(message: WSMessage) {
+  function handleMessage(message: WSMessage) {    
     switch (message.type) {
       case 'sync': {
         const payload = message.payload as {
           elements: ExcalidrawElement[]
           collaborators: Collaborator[]
         }
+        
+        // Track if this is a join (not creator) to center on host cursor
+        const isJoiningAsGuest = !isRoomCreator.value
         
         // If room creator, merge server elements with our existing elements
         // Otherwise, just set the elements from server
@@ -149,6 +153,31 @@ export const useCollaborationStore = defineStore('collaboration', () => {
           }
         })
         collaborators.value = collabMap
+        
+        // If joining as guest (user B), center on content or host's cursor
+        if (isJoiningAsGuest) {
+          const viewportWidth = window.innerWidth
+          const viewportHeight = window.innerHeight
+          
+          if (payload.elements && payload.elements.length > 0) {
+            // Center on the content if there are elements
+            canvasStore.centerOnContent(viewportWidth, viewportHeight)
+          } else {
+            // No content - center on the host's cursor if available
+            const hostWithCursor = payload.collaborators.find(
+              c => c.userId !== userId.value && c.cursor
+            )
+            
+            if (hostWithCursor?.cursor) {
+              canvasStore.centerOnPoint(
+                hostWithCursor.cursor.x,
+                hostWithCursor.cursor.y,
+                viewportWidth,
+                viewportHeight
+              )
+            }
+          }
+        }
         break
       }
       
@@ -249,14 +278,19 @@ export const useCollaborationStore = defineStore('collaboration', () => {
   function broadcastCursor(cursor: Point | null) {
     if (!roomId.value || !isConnected.value) return
     
+    // Always store the latest cursor position
+    pendingCursor = cursor
+    
+    // If already waiting, the latest position will be sent when timer fires
     if (cursorThrottleTimeout) return
     
     cursorThrottleTimeout = setTimeout(() => {
+      // Send the most recent cursor position
       sendMessage({
         type: 'cursor',
         roomId: roomId.value!,
         userId: userId.value,
-        payload: { cursor },
+        payload: { cursor: pendingCursor },
       })
       cursorThrottleTimeout = null
     }, cursorThrottleMs)

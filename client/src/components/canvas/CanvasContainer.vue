@@ -144,10 +144,11 @@ onUnmounted(() => {
 // Watch for changes and broadcast to collaborators
 watch(
   () => canvasStore.elements,
-  () => {
+  (newElements) => {
     // Note: localStorage saving is handled by the store's debouncedSave
-    if (collaborationStore.isConnected) {
-      collaborationStore.broadcastUpdate(canvasStore.elements)
+    // Only broadcast if this is a local change, not a remote update we just received
+    if (collaborationStore.isConnected && !canvasStore.isReceivingRemoteUpdate) {
+      collaborationStore.broadcastUpdate(newElements)
     }
   },
   { deep: true }
@@ -404,7 +405,21 @@ function handleSelectionStart(point: Point, addToSelection: boolean) {
       }
       
       if (isPointInRect(testPoint, bounds)) {
-        // Start dragging all selected elements
+        // Before starting drag, check if there's a different element on top at this point
+        // This allows clicking on elements that are visually inside/on top of the selected element
+        const topElementAtPoint = getElementAtPoint(canvasStore.visibleElements, point)
+        if (topElementAtPoint && !canvasStore.isSelected(topElementAtPoint.id)) {
+          // There's a different element on top - select it instead of dragging
+          canvasStore.selectElement(topElementAtPoint.id, addToSelection)
+          isDragging.value = true
+          startElementPositions.value = new Map(
+            canvasStore.selectedElements.map(el => [el.id, { x: el.x, y: el.y }])
+          )
+          cursorStyle.value = 'move'
+          return
+        }
+        
+        // No different element on top, proceed with dragging the selected elements
         isDragging.value = true
         startElementPositions.value = new Map(
           selectedElements.map(el => [el.id, { x: el.x, y: el.y }])
@@ -717,14 +732,8 @@ function handleDrag(point: Point) {
   })
 
   if (updates.size > 0) {
-    // Directly update without history (will save on pointer up)
-    canvasStore.elements.forEach(el => {
-      const update = updates.get(el.id)
-      if (update) {
-        el.x = update.x!
-        el.y = update.y!
-      }
-    })
+    // Update elements with proper reactivity (for collaboration sync)
+    canvasStore.updateElementsRealtime(updates)
     
     // Update bound arrows
     canvasStore.updateBoundArrows(movedIds)

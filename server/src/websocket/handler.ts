@@ -39,8 +39,6 @@ export function setupWebSocket(wss: WebSocketServer) {
   const roomManager = new RoomManager()
 
   wss.on('connection', (ws: WebSocket) => {
-    console.log('New WebSocket connection')
-
     ws.on('message', (data: Buffer) => {
       try {
         const message: WSMessage = JSON.parse(data.toString())
@@ -156,8 +154,6 @@ export function setupWebSocket(wss: WebSocketServer) {
       userId,
       payload: collaborator,
     }, ws)
-
-    console.log(`User ${username} joined room ${roomId} with ${incomingElements?.length || 0} elements`)
   }
 
   function handleLeave(ws: WebSocket, message: WSMessage) {
@@ -185,7 +181,6 @@ export function setupWebSocket(wss: WebSocketServer) {
           const currentRoom = roomManager.getRoom(roomId)
           if (currentRoom && currentRoom.collaborators.size === 0) {
             roomManager.deleteRoom(roomId)
-            console.log(`Room ${roomId} deleted (empty)`)
           }
         }, 60000) // 1 minute
       }
@@ -193,12 +188,13 @@ export function setupWebSocket(wss: WebSocketServer) {
 
     // Clear client info
     clientInfo.roomId = null
-    console.log(`User ${userId} left room ${roomId}`)
   }
 
   function handleUpdate(ws: WebSocket, message: WSMessage) {
     const clientInfo = clients.get(ws)
-    if (!clientInfo || !clientInfo.roomId) return
+    if (!clientInfo || !clientInfo.roomId) {
+      return
+    }
 
     const { roomId, payload } = message
     const { elements } = payload as { elements: unknown[] }
@@ -264,7 +260,9 @@ export function setupWebSocket(wss: WebSocketServer) {
 
   function handleDisconnect(ws: WebSocket) {
     const clientInfo = clients.get(ws)
-    if (!clientInfo) return
+    if (!clientInfo) {
+      return
+    }
 
     if (clientInfo.roomId) {
       handleLeave(ws, {
@@ -276,7 +274,6 @@ export function setupWebSocket(wss: WebSocketServer) {
     }
 
     clients.delete(ws)
-    console.log('WebSocket disconnected')
   }
 
   function sendMessage(ws: WebSocket, message: WSMessage) {
@@ -295,9 +292,13 @@ export function setupWebSocket(wss: WebSocketServer) {
   }
 
   function broadcastToRoom(roomId: string, message: WSMessage, excludeWs?: WebSocket) {
+    let sentCount = 0
     clients.forEach((clientInfo, ws) => {
       if (clientInfo.roomId === roomId && ws !== excludeWs) {
-        sendMessage(ws, message)
+        if (ws.readyState === WebSocket.OPEN) {
+          sendMessage(ws, message)
+          sentCount++
+        }
       }
     })
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCanvasStore } from '../stores/canvas'
 import { useCollaborationStore } from '../stores/collaboration'
@@ -16,7 +16,6 @@ const collaborationStore = useCollaborationStore()
 
 onMounted(() => {
   const roomId = route.params.roomId as string | undefined
-  console.log('[DEBUG] HomeView mounted, roomId:', roomId)
   
   if (roomId) {
     collaborationStore.joinRoom(roomId)
@@ -24,9 +23,19 @@ onMounted(() => {
   
   // Load saved canvas state if no room
   if (!roomId) {
-    console.log('[DEBUG] No roomId, calling loadFromLocalStorage')
     canvasStore.loadFromLocalStorage()
-    console.log('[DEBUG] After loadFromLocalStorage, elements count:', canvasStore.elements.length)
+    
+    // Center on content after DOM is ready (if there are elements)
+    if (canvasStore.elements.length > 0) {
+      nextTick(() => {
+        // Wait a frame for canvas container to fully render
+        requestAnimationFrame(() => {
+          const viewportWidth = window.innerWidth
+          const viewportHeight = window.innerHeight
+          canvasStore.centerOnContent(viewportWidth, viewportHeight)
+        })
+      })
+    }
   }
   
   // On mobile, default to pan tool for better touch experience

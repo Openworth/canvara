@@ -26,7 +26,6 @@ export class RoomManager {
       updatedAt: Date.now(),
     }
     this.rooms.set(id, room)
-    console.log(`Room created: ${id}`)
     return room
   }
 

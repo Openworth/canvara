@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, shallowRef } from 'vue'
+import { ref, computed } from 'vue'
 import { nanoid } from 'nanoid'
 import type { 
   ExcalidrawElement, 
@@ -37,8 +37,11 @@ const DEFAULT_APP_STATE: AppState = {
 }
 
 export const useCanvasStore = defineStore('canvas', () => {
-  // Elements
-  const elements = shallowRef<ExcalidrawElement[]>([])
+  // Elements - use ref instead of shallowRef for proper reactivity with collaboration
+  const elements = ref<ExcalidrawElement[]>([])
+  
+  // Flag to track if we're receiving remote updates (to avoid re-broadcasting)
+  const isReceivingRemoteUpdate = ref(false)
   
   // Selection
   const selectedElementIds = ref<Set<string>>(new Set())
@@ -165,6 +168,23 @@ export const useCanvasStore = defineStore('canvas', () => {
     saveToHistory()
   }
 
+  // Update multiple elements in real-time (no history save, for drag operations)
+  // This properly triggers reactivity for collaboration sync
+  function updateElementsRealtime(updates: Map<string, Partial<ExcalidrawElement>>) {
+    elements.value = elements.value.map(el => {
+      const update = updates.get(el.id)
+      if (update) {
+        return {
+          ...el,
+          ...update,
+          version: el.version + 1,
+          versionNonce: Math.floor(Math.random() * 2000000000),
+        }
+      }
+      return el
+    })
+  }
+
   // Delete elements
   function deleteElements(ids: string[]) {
     const idSet = new Set(ids)
@@ -249,6 +269,55 @@ export const useCanvasStore = defineStore('canvas', () => {
     appState.value.scrollX += deltaX
     appState.value.scrollY += deltaY
     debouncedSave()
+  }
+
+  // Center the viewport on a specific point (in canvas coordinates)
+  function centerOnPoint(canvasX: number, canvasY: number, viewportWidth: number, viewportHeight: number) {
+    const zoom = appState.value.zoom.value
+    // Calculate scroll so that the canvas point appears at the center of the viewport
+    appState.value.scrollX = viewportWidth / 2 - canvasX * zoom
+    appState.value.scrollY = viewportHeight / 2 - canvasY * zoom
+    debouncedSave()
+  }
+
+  // Center the viewport on all visible content
+  function centerOnContent(viewportWidth: number, viewportHeight: number) {
+    const visible = visibleElements.value
+    if (visible.length === 0) return false
+
+    // Calculate bounding box of all visible elements
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+
+    visible.forEach(el => {
+      // Handle line-based elements with points
+      if ((el.type === 'line' || el.type === 'arrow' || el.type === 'freedraw') && el.points) {
+        el.points.forEach(p => {
+          const px = el.x + p.x
+          const py = el.y + p.y
+          minX = Math.min(minX, px)
+          minY = Math.min(minY, py)
+          maxX = Math.max(maxX, px)
+          maxY = Math.max(maxY, py)
+        })
+      } else {
+        minX = Math.min(minX, el.x)
+        minY = Math.min(minY, el.y)
+        maxX = Math.max(maxX, el.x + el.width)
+        maxY = Math.max(maxY, el.y + el.height)
+      }
+    })
+
+    if (!isFinite(minX) || !isFinite(minY)) return false
+
+    // Calculate the center of the content
+    const contentCenterX = (minX + maxX) / 2
+    const contentCenterY = (minY + maxY) / 2
+
+    centerOnPoint(contentCenterX, contentCenterY, viewportWidth, viewportHeight)
+    return true
   }
 
   // Styling setters
@@ -376,11 +445,8 @@ export const useCanvasStore = defineStore('canvas', () => {
   let saveTimeout: ReturnType<typeof setTimeout> | null = null
 
   function debouncedSave() {
-    console.log('[DEBUG] debouncedSave called, elements count:', elements.value.length)
-    console.trace('[DEBUG] debouncedSave call stack')
     if (saveTimeout) clearTimeout(saveTimeout)
     saveTimeout = setTimeout(() => {
-      console.log('[DEBUG] debouncedSave timeout fired, calling saveToLocalStorage')
       saveToLocalStorage()
     }, 500) // 500ms debounce to avoid excessive writes
   }
@@ -489,18 +555,14 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   // Persistence
   function loadFromLocalStorage() {
-    console.log('[DEBUG] loadFromLocalStorage called')
     try {
       const saved = localStorage.getItem('canvara-canvas')
-      console.log('[DEBUG] localStorage data exists:', !!saved)
       if (saved) {
         const data = JSON.parse(saved)
-        console.log('[DEBUG] Parsed data - elements count:', data.elements?.length, 'appState:', !!data.appState)
         elements.value = data.elements || []
         if (data.appState) {
           appState.value = { ...DEFAULT_APP_STATE, ...data.appState }
         }
-        console.log('[DEBUG] After loading - elements.value count:', elements.value.length)
         saveToHistory()
       }
     } catch (e) {
@@ -509,18 +571,12 @@ export const useCanvasStore = defineStore('canvas', () => {
   }
 
   function saveToLocalStorage() {
-    console.log('[DEBUG] saveToLocalStorage called - elements count:', elements.value.length)
     try {
       const data = {
         elements: elements.value,
         appState: appState.value,
       }
-      const jsonStr = JSON.stringify(data)
-      console.log('[DEBUG] Saving to localStorage, data length:', jsonStr.length)
-      localStorage.setItem('canvara-canvas', jsonStr)
-      // Verify it was saved
-      const verify = localStorage.getItem('canvara-canvas')
-      console.log('[DEBUG] Verification - data saved:', !!verify)
+      localStorage.setItem('canvara-canvas', JSON.stringify(data))
     } catch (e) {
       console.error('Failed to save to localStorage:', e)
     }
@@ -535,21 +591,35 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   // Set elements from external source (collaboration)
   function setElements(newElements: ExcalidrawElement[]) {
+    isReceivingRemoteUpdate.value = true
     elements.value = newElements
+    // Reset flag after Vue's next tick to ensure watcher sees it
+    setTimeout(() => {
+      isReceivingRemoteUpdate.value = false
+    }, 0)
   }
 
   // Merge elements from collaboration
   function mergeElements(remoteElements: ExcalidrawElement[]) {
+    isReceivingRemoteUpdate.value = true
+    
     const elementMap = new Map(elements.value.map(el => [el.id, el]))
+    let updatedCount = 0
     
     remoteElements.forEach(remoteEl => {
       const localEl = elementMap.get(remoteEl.id)
       if (!localEl || remoteEl.version > localEl.version) {
         elementMap.set(remoteEl.id, remoteEl)
+        updatedCount++
       }
     })
     
     elements.value = Array.from(elementMap.values())
+    
+    // Reset flag after Vue's next tick to ensure watcher sees it
+    setTimeout(() => {
+      isReceivingRemoteUpdate.value = false
+    }, 0)
   }
 
   // Get element by id
@@ -688,6 +758,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     selectedElementIds,
     activeTool,
     appState,
+    isReceivingRemoteUpdate,
     
     // Computed
     selectedElements,
@@ -701,6 +772,7 @@ export const useCanvasStore = defineStore('canvas', () => {
     addElement,
     updateElement,
     updateElements,
+    updateElementsRealtime,
     deleteElements,
     deleteSelectedElements,
     getElementById,
@@ -722,6 +794,8 @@ export const useCanvasStore = defineStore('canvas', () => {
     resetZoom,
     setScroll,
     pan,
+    centerOnPoint,
+    centerOnContent,
     
     // Styling
     setStrokeColor,
