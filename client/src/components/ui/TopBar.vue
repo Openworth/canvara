@@ -76,7 +76,8 @@ onUnmounted(() => {
       </div>
 
       <!-- Logo -->
-      <div class="panel-glass px-2.5 py-1.5 flex items-center gap-1.5">
+      <div class="panel-glass px-2 py-1.5 flex items-center gap-2">
+        <img src="/logo-icon.svg" alt="Canvara" class="w-6 h-6" />
         <span class="text-sm font-semibold bg-gradient-to-r from-accent-primary to-accent-secondary bg-clip-text text-transparent">
           Canvara
         </span>
@@ -182,6 +183,7 @@ onUnmounted(() => {
 
       <!-- Logo/Brand - pill style -->
       <div class="brand-pill">
+        <img src="/logo-icon.svg" alt="Canvara" class="brand-icon" />
         <span class="brand-text">Canvara</span>
       </div>
     </div>
@@ -285,8 +287,9 @@ onUnmounted(() => {
 .brand-pill {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 40px;
-  padding: 0 14px;
+  padding: 0 12px;
   background: var(--color-toolbar-bg-solid);
   border: 1px solid var(--color-toolbar-border);
   border-radius: 12px;
@@ -295,6 +298,12 @@ onUnmounted(() => {
 
 .dark .brand-pill {
   box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.2);
+}
+
+.brand-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
 }
 
 .brand-text {
