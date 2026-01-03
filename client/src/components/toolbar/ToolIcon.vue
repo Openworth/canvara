@@ -1,0 +1,84 @@
+<script setup lang="ts">
+import {
+  MousePointer2,
+  Square,
+  Circle,
+  Diamond,
+  ArrowUpRight,
+  Minus,
+  Pencil,
+  Type,
+  Eraser,
+  Hand,
+  Image,
+  Undo2,
+  Redo2,
+  Plus,
+  Grid3X3,
+  Sun,
+  Moon,
+  Share2,
+  Download,
+  Menu,
+  Trash2,
+  X,
+  HelpCircle,
+  Crosshair,
+  Users,
+  Zap,
+  Link,
+  Copy,
+  Check,
+  Keyboard,
+  MoreHorizontal,
+  ChevronUp,
+  GripHorizontal,
+} from 'lucide-vue-next'
+import { computed } from 'vue'
+
+const props = defineProps<{
+  name: string
+}>()
+
+const iconMap: Record<string, any> = {
+  cursor: MousePointer2,
+  rectangle: Square,
+  ellipse: Circle,
+  diamond: Diamond,
+  arrow: ArrowUpRight,
+  line: Minus,
+  pencil: Pencil,
+  text: Type,
+  eraser: Eraser,
+  hand: Hand,
+  image: Image,
+  undo: Undo2,
+  redo: Redo2,
+  plus: Plus,
+  minus: Minus,
+  grid: Grid3X3,
+  sun: Sun,
+  moon: Moon,
+  share: Share2,
+  download: Download,
+  menu: Menu,
+  trash: Trash2,
+  close: X,
+  snap: Crosshair,
+  users: Users,
+  zap: Zap,
+  link: Link,
+  copy: Copy,
+  check: Check,
+  keyboard: Keyboard,
+  more: MoreHorizontal,
+  chevronUp: ChevronUp,
+  grip: GripHorizontal,
+}
+
+const IconComponent = computed(() => iconMap[props.name] || HelpCircle)
+</script>
+
+<template>
+  <component :is="IconComponent" :size="16" />
+</template>

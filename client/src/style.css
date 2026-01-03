@@ -1,0 +1,623 @@
+@import "tailwindcss";
+
+/* Custom theme configuration for canvara - Refined Design System */
+@theme {
+  /* Canvas colors */
+  --color-canvas-light: #FAFAFA;
+  --color-canvas-dark: #1A1A2E;
+  
+  /* Toolbar colors - light mode (with transparency for glassmorphism) */
+  --color-toolbar-bg: rgba(255, 255, 255, 0.92);
+  --color-toolbar-bg-solid: #ffffff;
+  --color-toolbar-border: rgba(0, 0, 0, 0.08);
+  --color-toolbar-hover: rgba(0, 0, 0, 0.05);
+  --color-toolbar-active: rgba(0, 0, 0, 0.08);
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  
+  /* Accent colors - warmer indigo */
+  --color-accent-primary: #6366F1;
+  --color-accent-secondary: #A5B4FC;
+  --color-accent-hover: #4F46E5;
+  --color-accent-glow: rgba(99, 102, 241, 0.25);
+  
+  /* Element colors palette */
+  --color-element-black: #1e1e1e;
+  --color-element-white: #ffffff;
+  --color-element-red: #e03131;
+  --color-element-pink: #c2255c;
+  --color-element-grape: #9c36b5;
+  --color-element-violet: #6741d9;
+  --color-element-indigo: #3b5bdb;
+  --color-element-blue: #1971c2;
+  --color-element-cyan: #0c8599;
+  --color-element-teal: #099268;
+  --color-element-green: #2f9e44;
+  --color-element-lime: #66a80f;
+  --color-element-yellow: #f08c00;
+  --color-element-orange: #e8590c;
+  
+  /* Fonts */
+  --font-virgil: 'Caveat', 'Virgil', cursive;
+  --font-cascadia: 'Fira Code', 'Cascadia Code', monospace;
+  --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  /* Shadows - soft and subtle */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.02), 0 4px 8px rgba(0, 0, 0, 0.03), 0 8px 16px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.01), 0 10px 20px rgba(0, 0, 0, 0.03), 0 15px 40px rgba(0, 0, 0, 0.04);
+  
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* Dark mode theme overrides */
+.dark {
+  --color-toolbar-bg: rgba(30, 30, 46, 0.92);
+  --color-toolbar-bg-solid: #1e1e2e;
+  --color-toolbar-border: rgba(255, 255, 255, 0.08);
+  --color-toolbar-hover: rgba(255, 255, 255, 0.06);
+  --color-toolbar-active: rgba(255, 255, 255, 0.1);
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #9ca3af;
+  --color-text-tertiary: #6b7280;
+  --color-accent-glow: rgba(99, 102, 241, 0.3);
+  
+  /* Dark shadows - subtle */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 8px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.06), 0 10px 20px rgba(0, 0, 0, 0.1), 0 15px 40px rgba(0, 0, 0, 0.14);
+  
+  color-scheme: dark;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  background-color: var(--color-canvas-light);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body,
+.dark html {
+  background-color: var(--color-canvas-dark);
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================
+   GLASSMORPHISM PANEL STYLES
+   ============================================ */
+
+.panel-glass {
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-toolbar-border);
+  box-shadow: var(--shadow-md);
+  border-radius: var(--radius-md);
+  /* Ensure crisp rendering */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.panel-glass-strong {
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-toolbar-border);
+  box-shadow: var(--shadow-lg);
+  border-radius: var(--radius-lg);
+  /* Ensure crisp rendering */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ============================================
+   TOOLBAR BUTTON STYLES
+   ============================================ */
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  position: relative;
+  /* Ensure crisp rendering - no subpixel blur */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.toolbar-button:hover {
+  background: var(--color-toolbar-hover);
+}
+
+.toolbar-button:active {
+  background: var(--color-toolbar-active);
+}
+
+.toolbar-button.active {
+  background: var(--color-accent-primary);
+  color: white;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+.toolbar-button.active:hover {
+  background: var(--color-accent-hover);
+}
+
+.toolbar-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.toolbar-button:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
+/* ============================================
+   TOOLBAR DIVIDER
+   ============================================ */
+
+.toolbar-divider {
+  width: 100%;
+  height: 1px;
+  background: var(--color-toolbar-border);
+  margin: 3px 0;
+}
+
+.toolbar-divider-vertical {
+  width: 1px;
+  height: 18px;
+  background: var(--color-toolbar-border);
+  margin: 0 3px;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0; 
+    transform: translateX(16px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+}
+
+@keyframes slideOutRight {
+  from { 
+    opacity: 1; 
+    transform: translateX(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: translateX(16px); 
+  }
+}
+
+@keyframes slideInDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-8px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes scaleIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+@keyframes scaleOut {
+  from { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  to { 
+    opacity: 0; 
+    transform: scale(0.95); 
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight var(--transition-normal) ease-out;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown var(--transition-normal) ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn var(--transition-normal) ease-out;
+}
+
+/* ============================================
+   MODAL STYLES
+   ============================================ */
+
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.modal-content {
+  animation: scaleIn var(--transition-normal) ease-out;
+}
+
+/* ============================================
+   LEGACY TOOLBAR STYLES (keeping for compatibility)
+   ============================================ */
+
+.toolbar-panel {
+  background-color: var(--color-toolbar-bg);
+  border-color: var(--color-toolbar-border);
+  color: var(--color-text-primary);
+}
+
+.toolbar-panel:hover {
+  background-color: var(--color-toolbar-hover);
+}
+
+.toolbar-text {
+  color: var(--color-text-primary);
+}
+
+.toolbar-text-secondary {
+  color: var(--color-text-secondary);
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+}
+
+/* Canvas cursor styles */
+.cursor-crosshair { cursor: crosshair; }
+.cursor-grab { cursor: grab; }
+.cursor-grabbing { cursor: grabbing; }
+.cursor-move { cursor: move; }
+.cursor-text { cursor: text; }
+.cursor-nwse-resize { cursor: nwse-resize; }
+.cursor-nesw-resize { cursor: nesw-resize; }
+.cursor-ns-resize { cursor: ns-resize; }
+.cursor-ew-resize { cursor: ew-resize; }
+
+/* ============================================
+   INPUT STYLES
+   ============================================ */
+
+.input-field {
+  background: var(--color-toolbar-hover);
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  padding: 6px 10px;
+  font-size: 13px;
+  transition: all var(--transition-fast);
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--color-accent-primary);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+.btn-primary {
+  background: var(--color-accent-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.btn-primary:active {
+  background: var(--color-accent-hover);
+}
+
+.btn-secondary {
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--color-toolbar-active);
+}
+
+/* ============================================
+   RANGE SLIDER STYLES
+   ============================================ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-toolbar-hover);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: box-shadow var(--transition-fast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--color-accent-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: box-shadow var(--transition-fast);
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Safe area support for notched devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  html {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Mobile-specific touch target sizes (44px minimum recommended) */
+@media (max-width: 767px) {
+  /* Larger touch targets for mobile */
+  .toolbar-button {
+    width: 44px;
+    height: 44px;
+  }
+  
+  /* Prevent text selection on touch */
+  .no-touch-select {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  /* Disable hover states on touch devices */
+  @media (hover: none) {
+    .toolbar-button:hover {
+      background: transparent;
+    }
+    
+    .toolbar-button.active:hover {
+      background: var(--color-accent-primary);
+    }
+    
+    .btn-primary:hover {
+      background: var(--color-accent-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--color-toolbar-hover);
+    }
+  }
+  
+  /* Larger range slider thumb for touch */
+  input[type="range"]::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  
+  input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+  
+  /* Larger input fields */
+  .input-field {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+}
+
+/* Touch-friendly utilities */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.tap-highlight-none {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bottom sheet animation */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-in-up {
+  animation: slideInUp var(--transition-normal) ease-out;
+}
+
+.animate-slide-out-down {
+  animation: slideOutDown var(--transition-fast) ease-in;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Momentum scrolling for iOS */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent pull-to-refresh on mobile */
+.prevent-overscroll {
+  overscroll-behavior: none;
+}
+
+/* Mobile modal adjustments */
+@media (max-width: 767px) {
+  .modal-content {
+    margin: 16px;
+    max-height: calc(100vh - 32px);
+    max-width: calc(100vw - 32px);
+    overflow-y: auto;
+  }
+}
+
+/* Landscape mode adjustments for mobile */
+@media (max-width: 767px) and (orientation: landscape) {
+  .mobile-toolbar {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+  
+  .mobile-sheet {
+    max-height: 50vh;
+  }
+}
