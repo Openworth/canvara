@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useCanvasStore } from '../../stores/canvas'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { useAppStore } from '../../stores/app'
 import ToolIcon from '../toolbar/ToolIcon.vue'
@@ -10,8 +8,6 @@ import ExportModal from '../modals/ExportModal.vue'
 import KeyboardShortcutsModal from '../modals/KeyboardShortcutsModal.vue'
 import MenuDropdown from './MenuDropdown.vue'
 
-const router = useRouter()
-const canvasStore = useCanvasStore()
 const collaborationStore = useCollaborationStore()
 const appStore = useAppStore()
 

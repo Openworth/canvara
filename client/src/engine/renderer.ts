@@ -1,7 +1,7 @@
 import rough from 'roughjs'
 import type { RoughCanvas } from 'roughjs/bin/canvas'
-import type { ExcalidrawElement, Point, Collaborator, AppState } from '../types'
-import { getElementBounds, getCommonBounds, canvasToScreen } from './math'
+import type { ExcalidrawElement, Collaborator, AppState } from '../types'
+import { getCommonBounds, canvasToScreen } from './math'
 
 const HANDLE_SIZE = 8
 const ROTATION_HANDLE_OFFSET = 25

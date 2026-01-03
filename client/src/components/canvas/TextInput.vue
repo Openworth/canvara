@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { useCanvasStore } from '../../stores/canvas'
 import { useAppStore } from '../../stores/app'
 import type { ExcalidrawElement } from '../../types'
 
@@ -16,7 +15,6 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const canvasStore = useCanvasStore()
 const appStore = useAppStore()
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const text = ref(props.element.text || '')

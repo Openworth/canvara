@@ -110,7 +110,7 @@ const currentShortcuts = computed(() => shortcuts.value[activeCategory.value])
                 {{ key }}
               </kbd>
             </div>
-            <template v-if="shortcut.alt">
+            <template v-if="'alt' in shortcut && shortcut.alt">
               <span class="key-or">or</span>
               <div class="key-group">
                 <kbd v-for="(key, keyIndex) in shortcut.alt" :key="keyIndex" class="key">

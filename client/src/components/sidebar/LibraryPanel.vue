@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useLibraryStore } from '../../stores/library'
 import { useCanvasStore } from '../../stores/canvas'
-import type { LibraryItem } from '../../types'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 
 const libraryStore = useLibraryStore()
@@ -82,16 +81,6 @@ function handleImport(e: Event) {
   
   // Reset input
   target.value = ''
-}
-
-function getItemPreview(item: LibraryItem): { width: number; height: number } {
-  const elements = item.elements
-  if (elements.length === 0) return { width: 50, height: 50 }
-
-  const maxX = Math.max(...elements.map(el => el.x + el.width))
-  const maxY = Math.max(...elements.map(el => el.y + el.height))
-
-  return { width: Math.min(maxX, 80), height: Math.min(maxY, 60) }
 }
 </script>
 

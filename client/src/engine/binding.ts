@@ -1,5 +1,5 @@
 import type { ExcalidrawElement, Point, PointBinding } from '../types'
-import { distance, rotatePoint, isPointInRect, isPointInEllipse, isPointInDiamond } from './math'
+import { distance, rotatePoint, isPointInRect, isPointInDiamond } from './math'
 
 // Distance threshold for snapping to an element
 const BINDING_DISTANCE = 20
@@ -200,7 +200,7 @@ function getIntersectionOnRectangle(
   center: Point,
   element: ExcalidrawElement
 ): Point {
-  const { x, y, width, height } = element
+  const { y, width, height } = element
   
   const dx = point.x - center.x
   const dy = point.y - center.y
@@ -211,12 +211,12 @@ function getIntersectionOnRectangle(
   }
   
   // Calculate intersection with each edge
-  const halfWidth = width / 2
-  const halfHeight = height / 2
+  const hw = width / 2
+  const hh = height / 2
   
   // Scale factor to reach each edge
-  const scaleX = dx !== 0 ? halfWidth / Math.abs(dx) : Infinity
-  const scaleY = dy !== 0 ? halfHeight / Math.abs(dy) : Infinity
+  const scaleX = dx !== 0 ? hw / Math.abs(dx) : Infinity
+  const scaleY = dy !== 0 ? hh / Math.abs(dy) : Infinity
   
   const scale = Math.min(scaleX, scaleY)
   
@@ -257,8 +257,6 @@ function getIntersectionOnDiamond(
   element: ExcalidrawElement
 ): Point {
   const { x, y, width, height } = element
-  const halfWidth = width / 2
-  const halfHeight = height / 2
   
   const dx = point.x - center.x
   const dy = point.y - center.y

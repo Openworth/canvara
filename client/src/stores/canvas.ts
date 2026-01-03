@@ -9,8 +9,6 @@ import type {
   StrokeStyle, 
   FontFamily,
   ArrowHead,
-  Point,
-  BoundingBox,
   PointBinding
 } from '../types'
 import { updateArrowBinding } from '../engine/binding'
