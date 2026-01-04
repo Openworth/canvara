@@ -83,7 +83,9 @@ function renderPreview() {
   if (!bounds) return
   
   const canvas = previewCanvas.value
-  const maxPreviewSize = 280
+  // Smaller preview on mobile
+  const isMobile = window.innerWidth < 640
+  const maxPreviewSize = isMobile ? 200 : 280
   
   // Calculate scale to fit preview
   const previewScale = Math.min(
@@ -461,18 +463,28 @@ function downloadFile(url: string, filename: string) {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="export-overlay">
     <!-- Backdrop -->
     <div
-      class="absolute inset-0 modal-backdrop"
+      class="export-backdrop"
       @click="emit('close')"
     />
 
-    <!-- Modal -->
+    <!-- Modal / Bottom Sheet -->
     <div class="export-modal">
+      <!-- Drag Handle (mobile only) -->
+      <div class="drag-handle">
+        <div class="drag-handle-bar"></div>
+      </div>
+      
       <!-- Header -->
       <div class="modal-header">
-        <h2 class="modal-title">Export</h2>
+        <div class="header-title">
+          <div class="header-icon">
+            <ToolIcon name="download" class="w-4 h-4" />
+          </div>
+          <h2 class="modal-title">Export</h2>
+        </div>
         <button
           class="close-button"
           @click="emit('close')"
@@ -484,111 +496,109 @@ function downloadFile(url: string, filename: string) {
 
       <!-- Content -->
       <div class="modal-body">
+        <!-- Format Segmented Control -->
+        <div class="format-segment">
+          <button
+            v-for="format in formats"
+            :key="format.value"
+            class="segment-btn"
+            :class="{ active: exportType === format.value }"
+            @click="exportType = format.value"
+          >
+            {{ format.label }}
+          </button>
+        </div>
+
         <!-- Preview Section -->
         <div class="preview-section">
-          <label class="section-label">Preview</label>
           <div class="preview-container" :class="{ 'no-bg': !withBackground }">
             <template v-if="elementsToExport.length > 0 && exportType !== 'json'">
               <canvas ref="previewCanvas" class="preview-canvas" />
-              <div v-if="exportDimensions" class="preview-dimensions">
-                {{ exportDimensions.width }} × {{ exportDimensions.height }}px
-              </div>
             </template>
             <template v-else-if="exportType === 'json'">
-              <div class="preview-json">
-                <ToolIcon name="download" class="w-8 h-8" />
-                <span>{{ elementsToExport.length }} element{{ elementsToExport.length !== 1 ? 's' : '' }}</span>
+              <div class="preview-placeholder">
+                <div class="placeholder-icon json">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M4 7V4h16v3M9 20h6M12 4v16" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <span class="placeholder-text">{{ elementsToExport.length }} element{{ elementsToExport.length !== 1 ? 's' : '' }}</span>
               </div>
             </template>
             <template v-else>
-              <div class="preview-empty">
-                <span>No elements to export</span>
+              <div class="preview-placeholder empty">
+                <div class="placeholder-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round"/>
+                    <path d="M3 16l5-5 4 4 5-5 4 4" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
+                <span class="placeholder-text">No elements to export</span>
               </div>
             </template>
           </div>
-        </div>
-
-        <!-- Format Selection -->
-        <div class="format-section">
-          <label class="section-label">Format</label>
-          <div class="format-grid">
-            <button
-              v-for="format in formats"
-              :key="format.value"
-              class="format-card"
-              :class="{ active: exportType === format.value }"
-              @click="exportType = format.value"
-            >
-              <span class="format-label">{{ format.label }}</span>
-              <span class="format-desc">{{ format.description }}</span>
-            </button>
+          <div v-if="exportDimensions && exportType !== 'json'" class="preview-meta">
+            <span class="meta-dimensions">{{ exportDimensions.width }} × {{ exportDimensions.height }}</span>
           </div>
         </div>
 
-        <!-- Options -->
-        <div class="options-section">
-          <label class="section-label">Options</label>
-          
-          <label class="checkbox-row" :class="{ disabled: exportType === 'json' }">
-            <div class="checkbox-wrapper">
-              <input
-                v-model="withBackground"
-                type="checkbox"
-                class="checkbox-input"
-                :disabled="exportType === 'json'"
-              />
-              <div class="checkbox-box">
-                <svg v-if="withBackground" class="checkbox-icon" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6L5 9L10 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            <span class="checkbox-label">Include background</span>
-          </label>
-
-          <label 
-            class="checkbox-row"
-            :class="{ disabled: canvasStore.selectedElements.length === 0 }"
-          >
-            <div class="checkbox-wrapper">
-              <input
-                v-model="onlySelected"
-                type="checkbox"
-                class="checkbox-input"
-                :disabled="canvasStore.selectedElements.length === 0"
-              />
-              <div class="checkbox-box">
-                <svg v-if="onlySelected" class="checkbox-icon" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6L5 9L10 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-            </div>
-            <div class="checkbox-label-group">
-              <span class="checkbox-label">Export selection only</span>
-              <span v-if="canvasStore.selectedElements.length === 0" class="checkbox-hint">No elements selected</span>
-              <span v-else class="checkbox-hint">{{ canvasStore.selectedElements.length }} selected</span>
-            </div>
-          </label>
-        </div>
-
-        <!-- Scale (PNG only) -->
-        <div v-if="exportType === 'png'" class="scale-section">
-          <div class="scale-header">
-            <label class="section-label">Scale</label>
-            <span class="scale-value">{{ scale }}×</span>
-          </div>
-          <div class="scale-slider-container">
+        <!-- Options Grid -->
+        <div class="options-grid">
+          <!-- Background Toggle -->
+          <label class="option-card" :class="{ active: withBackground, disabled: exportType === 'json' }">
             <input
-              v-model.number="scale"
-              type="range"
-              min="1"
-              max="4"
-              step="1"
-              class="scale-slider"
+              v-model="withBackground"
+              type="checkbox"
+              class="checkbox-input"
+              :disabled="exportType === 'json'"
             />
-            <div class="scale-marks">
-              <span v-for="n in 4" :key="n" class="scale-mark" :class="{ active: scale >= n }">{{ n }}×</span>
+            <div class="option-toggle" :class="{ on: withBackground }">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
             </div>
+            <span class="option-label">Background</span>
+          </label>
+
+          <!-- Selection Toggle -->
+          <label 
+            class="option-card"
+            :class="{ 
+              active: onlySelected, 
+              disabled: canvasStore.selectedElements.length === 0 
+            }"
+          >
+            <input
+              v-model="onlySelected"
+              type="checkbox"
+              class="checkbox-input"
+              :disabled="canvasStore.selectedElements.length === 0"
+            />
+            <div class="option-toggle" :class="{ on: onlySelected }">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </div>
+            <span class="option-label">
+              Selection
+              <span v-if="canvasStore.selectedElements.length > 0" class="option-badge">
+                {{ canvasStore.selectedElements.length }}
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <!-- Scale Section (PNG only) -->
+        <div v-if="exportType === 'png'" class="scale-section">
+          <div class="scale-label">Quality</div>
+          <div class="scale-segment">
+            <button 
+              v-for="n in 4" 
+              :key="n" 
+              class="scale-btn"
+              :class="{ active: scale === n }"
+              @click="scale = n"
+            >
+              {{ n }}×
+            </button>
           </div>
         </div>
       </div>
@@ -603,7 +613,6 @@ function downloadFile(url: string, filename: string) {
           :disabled="elementsToExport.length === 0"
           @click="handleExport"
         >
-          <ToolIcon name="download" class="w-4 h-4" />
           Export {{ exportType.toUpperCase() }}
         </button>
       </div>
@@ -612,35 +621,67 @@ function downloadFile(url: string, filename: string) {
 </template>
 
 <style scoped>
+/* Overlay */
+.export-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+}
+
+.export-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal - Mobile First (Bottom Sheet) */
 .export-modal {
   position: relative;
   width: 100%;
-  max-width: 400px;
   background: var(--color-toolbar-bg-solid);
-  border: 1px solid var(--color-toolbar-border);
-  box-shadow: 
-    0 0 0 1px rgba(0, 0, 0, 0.03),
-    0 24px 48px -12px rgba(0, 0, 0, 0.25);
-  border-radius: 16px;
-  animation: modalSlideIn 0.2s ease-out;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 60vh;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.dark .export-modal {
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 24px 48px -12px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes modalSlideIn {
+@keyframes slideUp {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(-8px);
+    transform: translateY(100%);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
+}
+
+/* Drag Handle */
+.drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+
+.drag-handle-bar {
+  width: 32px;
+  height: 4px;
+  background: var(--color-toolbar-border);
+  border-radius: 2px;
+  opacity: 0.4;
 }
 
 /* Header */
@@ -648,335 +689,355 @@ function downloadFile(url: string, filename: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 20px 0;
+  padding: 2px 12px 10px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary, #818cf8));
+  border-radius: 6px;
+  color: white;
+}
+
+.header-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .modal-title {
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
-  letter-spacing: -0.01em;
 }
 
 .close-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   border: none;
-  background: transparent;
-  color: var(--color-text-tertiary);
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .close-button:hover {
-  background: var(--color-toolbar-hover);
+  background: var(--color-toolbar-active);
   color: var(--color-text-primary);
 }
 
 /* Body */
 .modal-body {
-  padding: 20px;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.section-label {
-  display: block;
+/* Format Segmented Control */
+.format-segment {
+  display: flex;
+  background: var(--color-toolbar-hover);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.segment-btn {
+  flex: 1;
+  padding: 6px 8px;
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segment-btn:hover:not(.active) {
+  color: var(--color-text-primary);
+}
+
+.segment-btn.active {
+  background: var(--color-toolbar-bg-solid);
+  color: var(--color-accent-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.dark .segment-btn.active {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* Preview Section */
 .preview-section {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .preview-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  min-height: 160px;
+  min-height: 90px;
   background: var(--color-toolbar-hover);
-  border: 1px solid var(--color-toolbar-border);
   border-radius: 10px;
-  padding: 16px;
+  padding: 10px;
   position: relative;
   overflow: hidden;
 }
 
+.preview-container.no-bg {
+  background-image: 
+    linear-gradient(45deg, var(--color-toolbar-active) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-toolbar-active) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-toolbar-active) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-toolbar-active) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+}
+
 .preview-canvas {
-  max-width: 100%;
-  max-height: 200px;
+  display: block;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Let JS control size, don't force stretch */
 }
 
-.preview-dimensions {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  font-size: 10px;
-  font-family: var(--font-cascadia);
-  color: var(--color-text-tertiary);
-  background: var(--color-toolbar-bg);
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--color-toolbar-border);
-}
-
-.preview-json {
+.preview-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  color: var(--color-text-secondary);
+  gap: 6px;
+  padding: 4px;
 }
 
-.preview-json span {
-  font-size: 12px;
-}
-
-.preview-empty {
-  color: var(--color-text-tertiary);
-  font-size: 13px;
-}
-
-/* Format Section */
-.format-section {
-  margin-bottom: 20px;
-}
-
-.format-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.format-card {
+.placeholder-icon {
+  width: 32px;
+  height: 32px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 12px 8px;
-  background: var(--color-toolbar-hover);
-  border: 2px solid transparent;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.format-card:hover:not(.active) {
+  justify-content: center;
   background: var(--color-toolbar-active);
+  border-radius: 8px;
+  color: var(--color-text-tertiary);
 }
 
-.format-card.active {
+.placeholder-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.placeholder-icon.json {
   background: rgba(99, 102, 241, 0.1);
-  border-color: var(--color-accent-primary);
-}
-
-.format-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.format-card.active .format-label {
   color: var(--color-accent-primary);
 }
 
-.format-desc {
-  font-size: 10px;
-  color: var(--color-text-tertiary);
-}
-
-/* Options Section */
-.options-section {
-  margin-bottom: 20px;
-}
-
-.checkbox-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 0;
-  cursor: pointer;
-}
-
-.checkbox-row.disabled {
+.preview-placeholder.empty .placeholder-icon {
   opacity: 0.5;
-  cursor: not-allowed;
 }
 
-.checkbox-wrapper {
-  position: relative;
-  flex-shrink: 0;
+.placeholder-text {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  font-weight: 500;
+}
+
+.preview-meta {
+  display: flex;
+  justify-content: center;
+}
+
+.meta-dimensions {
+  font-size: 10px;
+  font-family: var(--font-cascadia);
+  color: var(--color-text-tertiary);
+  background: var(--color-toolbar-hover);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+/* Options Grid */
+.options-grid {
+  display: flex;
+  gap: 8px;
 }
 
 .checkbox-input {
   position: absolute;
   opacity: 0;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
+  pointer-events: none;
 }
 
-.checkbox-row.disabled .checkbox-input {
+.option-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--color-toolbar-hover);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.option-card:hover:not(.disabled) {
+  background: var(--color-toolbar-active);
+}
+
+.option-card.disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.checkbox-box {
-  width: 18px;
+/* Toggle Switch */
+.option-toggle {
+  position: relative;
+  width: 32px;
   height: 18px;
-  border: 2px solid var(--color-toolbar-border);
-  border-radius: 5px;
-  background: var(--color-toolbar-hover);
+  flex-shrink: 0;
+}
+
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--color-toolbar-border);
+  border-radius: 9px;
+  transition: background 0.2s ease;
+}
+
+.option-toggle.on .toggle-track {
+  background: var(--color-accent-primary);
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.option-toggle.on .toggle-thumb {
+  transform: translateX(14px);
+}
+
+.option-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-primary);
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
+  gap: 4px;
 }
 
-.checkbox-input:checked + .checkbox-box {
-  background: var(--color-accent-primary);
-  border-color: var(--color-accent-primary);
-}
-
-.checkbox-icon {
-  width: 12px;
-  height: 12px;
+.option-badge {
+  font-size: 10px;
+  font-weight: 600;
   color: white;
-}
-
-.checkbox-row:hover:not(.disabled) .checkbox-box {
-  border-color: var(--color-text-tertiary);
-}
-
-.checkbox-label-group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.checkbox-label {
-  font-size: 13px;
-  color: var(--color-text-primary);
-}
-
-.checkbox-hint {
-  font-size: 11px;
-  color: var(--color-text-tertiary);
+  background: var(--color-accent-primary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  min-width: 16px;
+  text-align: center;
 }
 
 /* Scale Section */
 .scale-section {
-  margin-bottom: 4px;
-}
-
-.scale-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.scale-header .section-label {
-  margin-bottom: 0;
-}
-
-.scale-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-accent-primary);
-  font-family: var(--font-cascadia);
-}
-
-.scale-slider-container {
-  position: relative;
-}
-
-.scale-slider {
-  width: 100%;
-  height: 6px;
-  -webkit-appearance: none;
-  appearance: none;
+  gap: 8px;
+  padding: 6px 10px;
   background: var(--color-toolbar-hover);
-  border-radius: 3px;
-  outline: none;
+  border-radius: 8px;
 }
 
-.scale-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  background: var(--color-accent-primary);
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
-  transition: transform 0.15s ease;
-}
-
-.scale-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.1);
-}
-
-.scale-slider::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  background: var(--color-accent-primary);
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.scale-marks {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 6px;
-  padding: 0 2px;
-}
-
-.scale-mark {
-  font-size: 10px;
-  color: var(--color-text-tertiary);
-  font-family: var(--font-cascadia);
-}
-
-.scale-mark.active {
+.scale-label {
+  font-size: 11px;
+  font-weight: 500;
   color: var(--color-text-secondary);
+}
+
+.scale-segment {
+  display: flex;
+  flex: 1;
+  background: var(--color-toolbar-bg-solid);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.scale-btn {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-cascadia);
+  color: var(--color-text-tertiary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scale-btn:hover:not(.active) {
+  color: var(--color-text-secondary);
+  background: var(--color-toolbar-hover);
+}
+
+.scale-btn.active {
+  background: var(--color-accent-primary);
+  color: white;
 }
 
 /* Footer */
 .modal-footer {
   display: flex;
-  gap: 10px;
-  padding: 16px 20px 20px;
+  gap: 8px;
+  padding: 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--color-toolbar-border);
 }
 
 .cancel-button {
   flex: 1;
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-secondary);
-  background: transparent;
-  border: 1px solid var(--color-toolbar-border);
+  background: var(--color-toolbar-hover);
+  border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .cancel-button:hover {
-  background: var(--color-toolbar-hover);
+  background: var(--color-toolbar-active);
   color: var(--color-text-primary);
 }
 
@@ -985,24 +1046,117 @@ function downloadFile(url: string, filename: string) {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 5px;
+  padding: 10px 12px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: white;
-  background: var(--color-accent-primary);
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary, #818cf8));
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .export-button:hover:not(:disabled) {
-  background: var(--color-accent-hover);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.export-button:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .export-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Desktop - Centered Modal */
+@media (min-width: 640px) {
+  .export-overlay {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .export-modal {
+    width: auto;
+    min-width: 400px;
+    max-width: 440px;
+    max-height: 90vh;
+    border: 1px solid var(--color-toolbar-border);
+    border-radius: 20px;
+    animation: modalSlideIn 0.2s ease-out;
+  }
+
+  @keyframes modalSlideIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .drag-handle {
+    display: none;
+  }
+
+  .modal-header {
+    padding: 20px 20px 16px;
+  }
+
+  .modal-body {
+    padding: 0 20px 20px;
+    gap: 20px;
+  }
+
+  .preview-container {
+    min-height: 160px;
+    padding: 20px;
+  }
+
+  .preview-canvas {
+    /* JS controls sizing */
+  }
+
+  .modal-footer {
+    padding: 16px 20px 20px;
+  }
+
+  .cancel-button,
+  .export-button {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .export-button {
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  }
+}
+
+/* Dark mode adjustments */
+.dark .export-modal {
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.dark .segment-btn.active {
+  background: var(--color-toolbar-active);
+}
+
+.dark .toggle-thumb {
+  background: #f0f0f0;
+}
+
+@media (min-width: 640px) {
+  .dark .export-modal {
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 24px 48px -12px rgba(0, 0, 0, 0.6);
+  }
 }
 </style>

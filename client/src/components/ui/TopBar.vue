@@ -16,7 +16,6 @@ const canvasStore = useCanvasStore()
 
 const showMenu = ref(false)
 const showShareModal = ref(false)
-const showExportModal = ref(false)
 const showKeyboardShortcutsModal = ref(false)
 const showClearCanvasModal = ref(false)
 
@@ -79,7 +78,7 @@ onUnmounted(() => {
           v-if="showMenu"
           :is-mobile="false"
           @close="showMenu = false"
-          @export="showExportModal = true"
+          @export="appStore.openExportModal()"
           @share="showShareModal = true"
           @clear-canvas="showClearCanvasModal = true"
         />
@@ -189,7 +188,7 @@ onUnmounted(() => {
           v-if="showMenu"
           :is-mobile="true"
           @close="showMenu = false"
-          @export="showExportModal = true"
+          @export="appStore.openExportModal()"
           @share="showShareModal = true"
           @clear-canvas="showClearCanvasModal = true"
         />
@@ -245,8 +244,8 @@ onUnmounted(() => {
   />
 
   <ExportModal
-    v-if="showExportModal"
-    @close="showExportModal = false"
+    v-if="appStore.showExportModal"
+    @close="appStore.closeExportModal()"
   />
 
   <KeyboardShortcutsModal

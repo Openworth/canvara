@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCanvasStore } from '../../stores/canvas'
+import { useAppStore } from '../../stores/app'
 import type { Tool } from '../../types'
 import ToolIcon from './ToolIcon.vue'
 
 const canvasStore = useCanvasStore()
+const appStore = useAppStore()
 
 // Mobile detection
 const isMobile = ref(false)
@@ -118,6 +120,7 @@ onUnmounted(() => {
   <!-- Desktop: Left vertical toolbar -->
   <div
     v-if="!isMobile"
+    v-show="!appStore.showExportModal"
     class="toolbar-container"
   >
     <!-- Inner toolbar content -->
@@ -232,7 +235,7 @@ onUnmounted(() => {
   </div>
 
   <!-- Mobile: Floating bottom toolbar -->
-  <div v-else class="mobile-toolbar-wrapper">
+  <div v-else v-show="!appStore.showExportModal && !appStore.showMobilePropertiesPanel" class="mobile-toolbar-wrapper">
     <div class="mobile-toolbar">
       <!-- Undo/Redo Section -->
       <div class="mobile-section">

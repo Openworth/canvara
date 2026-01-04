@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useCanvasStore } from '../../stores/canvas'
+import { useAppStore } from '../../stores/app'
 import ColorPicker from './ColorPicker.vue'
 import StrokeOptions from './StrokeOptions.vue'
 import FillOptions from './FillOptions.vue'
@@ -9,6 +10,7 @@ import ArrowOptions from './ArrowOptions.vue'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 
 const canvasStore = useCanvasStore()
+const appStore = useAppStore()
 
 // Mobile detection
 const isMobile = ref(false)
@@ -139,9 +141,18 @@ const shouldShowSidebar = computed(() => {
 watch([shouldShowSidebar, isMobile], ([show, mobile]) => {
   if (mobile && show && sheetState.value === 'collapsed') {
     sheetState.value = 'peek'
+    appStore.setMobilePropertiesPanel(true)
   }
   if (mobile && !show) {
     sheetState.value = 'collapsed'
+    appStore.setMobilePropertiesPanel(false)
+  }
+})
+
+// Sync dismissal with app store
+watch(sheetState, (state) => {
+  if (isMobile.value) {
+    appStore.setMobilePropertiesPanel(state !== 'collapsed')
   }
 })
 
@@ -360,121 +371,87 @@ const opacity = computed(() =>
     </div>
   </Transition>
 
-  <!-- Mobile: Bottom sheet -->
-  <div
-    v-else-if="shouldShowSidebar"
-    class="mobile-sheet"
-    :class="{ 'dragging': isDragging }"
-    :style="{ height: `${sheetHeight}px` }"
-    @touchmove="handleDragMove"
-    @touchend="handleDragEnd"
-    @mousemove="handleDragMove"
-    @mouseup="handleDragEnd"
-  >
-    <!-- Sheet accent gradient at top -->
-    <div class="sheet-accent-gradient" />
-    
-    <!-- Drag handle -->
-    <div
-      class="sheet-handle"
-      @touchstart.prevent="handleDragStart"
-      @mousedown.prevent="handleDragStart"
-      @click="toggleSheet"
-    >
-      <div class="sheet-handle-bar" />
+  <!-- Mobile: Floating bottom sheet (non-modal, doesn't block canvas) -->
+  <div v-else-if="shouldShowSidebar" class="mobile-sheet">
+      <!-- Drag Handle -->
+      <div class="drag-handle">
+        <div class="drag-handle-bar"></div>
+      </div>
+      
+      <!-- Header -->
       <div class="sheet-header">
-        <div class="sheet-header-icon">
-          <ToolIcon :name="panelIcon" class="w-4 h-4" />
+        <div class="header-title">
+          <div class="header-icon">
+            <ToolIcon :name="panelIcon" class="w-4 h-4" />
+          </div>
+          <h3 class="sheet-title">{{ panelTitle }}</h3>
         </div>
-        <span class="sheet-title">{{ panelTitle }}</span>
+        <button class="close-button" @click="dismissSheet" aria-label="Close">
+          <ToolIcon name="close" class="w-4 h-4" />
+        </button>
       </div>
-      <div class="sheet-expand-indicator">
-        <ToolIcon 
-          name="chevronUp" 
-          class="w-4 h-4 transition-transform duration-200"
-          :class="{ 'rotate-180': sheetState !== 'expanded' }"
-        />
-      </div>
-    </div>
 
-    <!-- Content -->
-    <div class="sheet-content">
-      <!-- Text Options Panel -->
-      <TextOptions v-if="panelMode === 'text'" />
+      <!-- Content -->
+      <div class="sheet-content">
+        <!-- Text Options Panel -->
+        <TextOptions v-if="panelMode === 'text'" />
 
-      <!-- Shape/Line Options Panel -->
-      <template v-else>
-        <!-- Compact color row for peek state -->
-        <div v-if="sheetState === 'peek'" class="peek-compact-row">
-          <div class="peek-color-section">
-            <label class="option-label">Stroke</label>
-            <ColorPicker
-              :value="strokeColor"
-              @change="canvasStore.setStrokeColor($event)"
+        <!-- Shape/Line Options Panel -->
+        <template v-else>
+          <!-- Color Row -->
+          <div class="color-row">
+            <div class="color-section">
+              <label class="section-label">Stroke</label>
+              <ColorPicker
+                :value="strokeColor"
+                @change="canvasStore.setStrokeColor($event)"
+                compact
+              />
+            </div>
+            <div v-if="panelMode === 'shape'" class="color-section">
+              <label class="section-label">Fill</label>
+              <ColorPicker
+                :value="backgroundColor"
+                @change="canvasStore.setBackgroundColor($event)"
+                compact
+              />
+            </div>
+          </div>
+
+          <!-- Stroke Width Row -->
+          <div class="option-row">
+            <label class="section-label">Width</label>
+            <StrokeOptions
+              :width="strokeWidth"
+              :style="strokeStyle"
+              @update:width="canvasStore.setStrokeWidth($event)"
+              @update:style="canvasStore.setStrokeStyle($event)"
               compact
             />
           </div>
-          <div v-if="panelMode === 'shape'" class="peek-color-section">
-            <label class="option-label">Fill</label>
-            <ColorPicker
-              :value="backgroundColor"
-              @change="canvasStore.setBackgroundColor($event)"
-              compact
-            />
-          </div>
-        </div>
 
-        <!-- Full options for expanded state -->
-        <template v-if="sheetState === 'expanded'">
-          <!-- Stroke Color -->
-          <div class="option-section">
-            <label class="option-label">Stroke</label>
-            <ColorPicker
-              :value="strokeColor"
-              @change="canvasStore.setStrokeColor($event)"
-            />
-          </div>
-
-          <!-- Background Color (not for lines) -->
-          <div v-if="panelMode === 'shape'" class="option-section">
-            <label class="option-label">Background</label>
-            <ColorPicker
-              :value="backgroundColor"
-              @change="canvasStore.setBackgroundColor($event)"
-            />
-          </div>
-
-          <!-- Fill Style (not for lines) -->
-          <div v-if="panelMode === 'shape'" class="option-section">
+          <!-- Fill Style (shapes only) -->
+          <div v-if="panelMode === 'shape'" class="option-row">
+            <label class="section-label">Style</label>
             <FillOptions
               :value="fillStyle"
               @change="canvasStore.setFillStyle($event)"
             />
           </div>
 
-          <!-- Stroke Options -->
-          <div class="option-section">
-            <StrokeOptions
-              :width="strokeWidth"
-              :style="strokeStyle"
-              @update:width="canvasStore.setStrokeWidth($event)"
-              @update:style="canvasStore.setStrokeStyle($event)"
-            />
-          </div>
-
-          <!-- Arrow Options (arrowhead styles) -->
-          <div v-if="showArrowOptions" class="option-section">
+          <!-- Arrow Options -->
+          <div v-if="showArrowOptions" class="option-row">
             <ArrowOptions />
           </div>
 
-          <!-- Roughness -->
-          <div class="option-section">
-            <label class="option-label">Sloppiness</label>
-            <div class="roughness-buttons">
+          <!-- Sloppiness -->
+          <div class="option-row">
+            <label class="section-label">Sloppiness</label>
+            <div class="segment-control">
               <button
                 v-for="r in [0, 1, 2]"
                 :key="r"
-                class="roughness-btn mobile"
+                class="segment-btn"
                 :class="{ 'active': roughness === r }"
                 @click="canvasStore.setRoughness(r)"
               >
@@ -484,12 +461,9 @@ const opacity = computed(() =>
           </div>
 
           <!-- Opacity -->
-          <div class="option-section">
-            <div class="opacity-header">
-              <label class="option-label">Opacity</label>
-              <span class="opacity-value">{{ opacity }}%</span>
-            </div>
-            <div class="opacity-slider-container">
+          <div class="option-row opacity-row">
+            <label class="section-label">Opacity</label>
+            <div class="opacity-control">
               <input
                 type="range"
                 min="10"
@@ -499,23 +473,12 @@ const opacity = computed(() =>
                 @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
                 class="opacity-slider"
               />
+              <span class="opacity-value">{{ opacity }}%</span>
             </div>
           </div>
         </template>
-
-        <!-- Stroke width quick access for peek state -->
-        <div v-if="sheetState === 'peek'" class="peek-stroke-options">
-          <StrokeOptions
-            :width="strokeWidth"
-            :style="strokeStyle"
-            @update:width="canvasStore.setStrokeWidth($event)"
-            @update:style="canvasStore.setStrokeStyle($event)"
-            compact
-          />
-        </div>
-      </template>
+      </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
@@ -758,138 +721,242 @@ const opacity = computed(() =>
 }
 
 /* ============================================
-   MOBILE BOTTOM SHEET
+   MOBILE BOTTOM SHEET (Non-modal, hides toolbar)
    ============================================ */
 
 .mobile-sheet {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  left: 12px;
-  right: 12px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
-  background: var(--color-toolbar-bg);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid var(--color-toolbar-border);
-  border-radius: 22px;
-  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--color-toolbar-bg-solid);
+  border-top: 1px solid var(--color-toolbar-border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  animation: sheetSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  max-height: 55vh;
   overflow: hidden;
-  box-shadow: 
-    0 -8px 40px -8px rgba(0, 0, 0, 0.15),
-    0 -4px 20px -4px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+@keyframes sheetSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dark .mobile-sheet {
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* Drag Handle */
+.drag-handle {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 2px;
+}
+
+.drag-handle-bar {
+  width: 32px;
+  height: 4px;
+  background: var(--color-toolbar-border);
+  border-radius: 2px;
+  opacity: 0.4;
+}
+
+/* Header */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 12px 10px;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary, #818cf8));
+  border-radius: 6px;
+  color: white;
+}
+
+.header-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sheet-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.close-button:hover {
+  background: var(--color-toolbar-active);
+  color: var(--color-text-primary);
+}
+
+/* Content */
+.sheet-content {
+  padding: 0 12px 12px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Section Labels */
+.section-label {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+/* Color Row - Side by side */
+.color-row {
+  display: flex;
+  gap: 8px;
+}
+
+.color-section {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Option Rows */
+.option-row {
   display: flex;
   flex-direction: column;
 }
 
-.dark .mobile-sheet {
-  box-shadow: 
-    0 -8px 40px -12px rgba(0, 0, 0, 0.25),
-    0 -4px 20px -6px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.mobile-sheet.dragging {
-  transition: none;
-}
-
-.sheet-accent-gradient {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
-  border-radius: 0 0 2px 2px;
-  opacity: 0.8;
-}
-
-.sheet-handle {
+/* Segment Control (for sloppiness) */
+.segment-control {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  padding-top: 20px;
-  cursor: grab;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: none;
-  flex-shrink: 0;
-}
-
-.sheet-handle:active {
-  cursor: grabbing;
-}
-
-.sheet-handle-bar {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 40px;
-  height: 4px;
-  background: var(--color-text-tertiary);
-  border-radius: 2px;
-  opacity: 0.3;
-}
-
-.sheet-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.sheet-header-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
+  background: var(--color-toolbar-hover);
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
-  color: white;
-  box-shadow: 0 2px 8px -2px rgba(99, 102, 241, 0.4);
+  padding: 2px;
+  gap: 2px;
 }
 
-.sheet-title {
-  font-size: 15px;
+.segment-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
   font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segment-btn:hover:not(.active) {
   color: var(--color-text-primary);
 }
 
-.sheet-expand-indicator {
+.segment-btn.active {
+  background: var(--color-toolbar-bg-solid);
+  color: var(--color-accent-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.dark .segment-btn.active {
+  background: var(--color-toolbar-active);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Opacity Row */
+.opacity-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--color-toolbar-hover);
+  border-radius: 8px;
+}
+
+.opacity-row .section-label {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.opacity-control {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--color-toolbar-hover);
-  color: var(--color-text-secondary);
+  gap: 8px;
 }
 
-.sheet-content {
-  padding: 0 16px 16px;
+.opacity-slider {
   flex: 1;
-  overflow-y: auto;
-  min-height: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--color-toolbar-active) 0%,
+    var(--color-accent-primary) 100%
+  );
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
 }
 
-/* ============================================
-   PEEK STATE COMPACT LAYOUTS
-   ============================================ */
-
-.peek-compact-row {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+.opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--color-accent-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.4);
 }
 
-.peek-color-section {
-  flex: 1;
-}
-
-.peek-stroke-options {
-  margin-top: 4px;
+.opacity-value {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-cascadia);
+  color: var(--color-accent-primary);
+  min-width: 32px;
+  text-align: right;
 }
 </style>
