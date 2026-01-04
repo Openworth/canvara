@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCanvasStore } from '../../stores/canvas'
 import type { Tool } from '../../types'
-import ToolButton from './ToolButton.vue'
 import ToolIcon from './ToolIcon.vue'
 
 const canvasStore = useCanvasStore()

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useCanvasStore } from '../../stores/canvas'
 import { useAppStore } from '../../stores/app'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 
@@ -15,7 +14,6 @@ const emit = defineEmits<{
   clearCanvas: []
 }>()
 
-const canvasStore = useCanvasStore()
 const appStore = useAppStore()
 
 function handleClearCanvas() {
