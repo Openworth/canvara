@@ -31,79 +31,6 @@ onUnmounted(() => {
 // Bottom sheet state for mobile
 type SheetState = 'collapsed' | 'peek' | 'expanded'
 const sheetState = ref<SheetState>('collapsed')
-const isDragging = ref(false)
-const dragStartY = ref(0)
-const dragCurrentY = ref(0)
-
-// Sheet heights
-const COLLAPSED_HEIGHT = 0
-const PEEK_HEIGHT = 180
-const EXPANDED_HEIGHT = 400
-
-const sheetHeight = computed(() => {
-  if (isDragging.value) {
-    const dragDelta = dragStartY.value - dragCurrentY.value
-    let baseHeight = sheetState.value === 'collapsed' ? COLLAPSED_HEIGHT 
-      : sheetState.value === 'peek' ? PEEK_HEIGHT : EXPANDED_HEIGHT
-    return Math.max(COLLAPSED_HEIGHT, Math.min(EXPANDED_HEIGHT, baseHeight + dragDelta))
-  }
-  
-  switch (sheetState.value) {
-    case 'collapsed': return COLLAPSED_HEIGHT
-    case 'peek': return PEEK_HEIGHT
-    case 'expanded': return EXPANDED_HEIGHT
-  }
-})
-
-function handleDragStart(e: TouchEvent | MouseEvent) {
-  isDragging.value = true
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  dragStartY.value = clientY
-  dragCurrentY.value = clientY
-}
-
-function handleDragMove(e: TouchEvent | MouseEvent) {
-  if (!isDragging.value) return
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  dragCurrentY.value = clientY
-}
-
-function handleDragEnd() {
-  if (!isDragging.value) return
-  
-  const dragDelta = dragStartY.value - dragCurrentY.value
-  const currentHeight = sheetHeight.value
-  
-  // Determine new state based on velocity and position
-  if (dragDelta > 50) {
-    // Dragging up
-    if (sheetState.value === 'collapsed') {
-      sheetState.value = 'peek'
-    } else if (sheetState.value === 'peek') {
-      sheetState.value = 'expanded'
-    }
-  } else if (dragDelta < -50) {
-    // Dragging down
-    if (sheetState.value === 'expanded') {
-      sheetState.value = 'peek'
-    } else if (sheetState.value === 'peek') {
-      // Dragging down from peek - dismiss completely
-      dismissSheet()
-    }
-  } else {
-    // Snap to nearest state
-    if (currentHeight < PEEK_HEIGHT / 2) {
-      // Snap to collapsed - dismiss completely
-      dismissSheet()
-    } else if (currentHeight < (PEEK_HEIGHT + EXPANDED_HEIGHT) / 2) {
-      sheetState.value = 'peek'
-    } else {
-      sheetState.value = 'expanded'
-    }
-  }
-  
-  isDragging.value = false
-}
 
 // Dismiss the sheet completely by resetting to hand tool
 function dismissSheet() {
@@ -112,16 +39,6 @@ function dismissSheet() {
   // This clears selection and switches away from drawing tools
   canvasStore.clearSelection()
   canvasStore.setActiveTool('hand')
-}
-
-function toggleSheet() {
-  if (sheetState.value === 'collapsed') {
-    sheetState.value = 'peek'
-  } else if (sheetState.value === 'peek') {
-    sheetState.value = 'expanded'
-  } else {
-    sheetState.value = 'peek'
-  }
 }
 
 const hasSelection = computed(() => canvasStore.selectedElements.length > 0)
