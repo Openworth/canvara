@@ -119,108 +119,116 @@ onUnmounted(() => {
   <!-- Desktop: Left vertical toolbar -->
   <div
     v-if="!isMobile"
-    class="absolute left-3 top-1/2 -translate-y-1/2 z-10 flex flex-col p-1.5 gap-0.5 panel-glass animate-fade-in"
+    class="toolbar-container"
   >
-    <!-- Undo/Redo Group -->
-    <div class="flex flex-col gap-0.5">
-      <button
-        class="toolbar-button"
-        :class="{ 'opacity-40 cursor-not-allowed': !canvasStore.canUndo }"
-        :disabled="!canvasStore.canUndo"
-        v-tooltip.right="'Undo (Ctrl+Z)'"
-        @click="canvasStore.undo()"
-      >
-        <ToolIcon name="undo" class="w-4 h-4" />
-      </button>
-      <button
-        class="toolbar-button"
-        :class="{ 'opacity-40 cursor-not-allowed': !canvasStore.canRedo }"
-        :disabled="!canvasStore.canRedo"
-        v-tooltip.right="'Redo (Ctrl+Shift+Z)'"
-        @click="canvasStore.redo()"
-      >
-        <ToolIcon name="redo" class="w-4 h-4" />
-      </button>
-    </div>
+    <!-- Inner toolbar content -->
+    <div class="toolbar-inner">
+      <!-- Undo/Redo Group -->
+      <div class="tool-group" style="--group-index: 0;">
+        <button
+          class="tool-btn"
+          :class="{ 'disabled': !canvasStore.canUndo }"
+          :disabled="!canvasStore.canUndo"
+          v-tooltip.right="'Undo (Ctrl+Z)'"
+          @click="canvasStore.undo()"
+        >
+          <ToolIcon name="undo" class="w-4 h-4" />
+        </button>
+        <button
+          class="tool-btn"
+          :class="{ 'disabled': !canvasStore.canRedo }"
+          :disabled="!canvasStore.canRedo"
+          v-tooltip.right="'Redo (Ctrl+Shift+Z)'"
+          @click="canvasStore.redo()"
+        >
+          <ToolIcon name="redo" class="w-4 h-4" />
+        </button>
+      </div>
 
-    <!-- Divider -->
-    <div class="toolbar-divider" />
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
 
-    <!-- Selection Tool -->
-    <div class="flex flex-col gap-0.5">
-      <ToolButton
-        v-for="tool in selectionTools"
-        :key="tool.id"
-        :icon="tool.icon"
-        :label="tool.label"
-        :shortcut="tool.shortcut"
-        :active="activeTool === tool.id"
-        @click="selectTool(tool.id)"
-      />
-    </div>
+      <!-- Selection Tool -->
+      <div class="tool-group" style="--group-index: 1;">
+        <button
+          v-for="tool in selectionTools"
+          :key="tool.id"
+          class="tool-btn"
+          :class="{ 'active': activeTool === tool.id }"
+          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          @click="selectTool(tool.id)"
+        >
+          <ToolIcon :name="tool.icon" class="w-4 h-4" />
+        </button>
+      </div>
 
-    <!-- Divider -->
-    <div class="toolbar-divider" />
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
 
-    <!-- Shape Tools -->
-    <div class="flex flex-col gap-0.5">
-      <ToolButton
-        v-for="tool in shapeTools"
-        :key="tool.id"
-        :icon="tool.icon"
-        :label="tool.label"
-        :shortcut="tool.shortcut"
-        :active="activeTool === tool.id"
-        @click="selectTool(tool.id)"
-      />
-    </div>
+      <!-- Shape Tools -->
+      <div class="tool-group" style="--group-index: 2;">
+        <button
+          v-for="tool in shapeTools"
+          :key="tool.id"
+          class="tool-btn"
+          :class="{ 'active': activeTool === tool.id }"
+          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          @click="selectTool(tool.id)"
+        >
+          <ToolIcon :name="tool.icon" class="w-4 h-4" />
+        </button>
+      </div>
 
-    <!-- Divider -->
-    <div class="toolbar-divider" />
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
 
-    <!-- Line Tools -->
-    <div class="flex flex-col gap-0.5">
-      <ToolButton
-        v-for="tool in lineTools"
-        :key="tool.id"
-        :icon="tool.icon"
-        :label="tool.label"
-        :shortcut="tool.shortcut"
-        :active="activeTool === tool.id"
-        @click="selectTool(tool.id)"
-      />
-    </div>
+      <!-- Line Tools -->
+      <div class="tool-group" style="--group-index: 3;">
+        <button
+          v-for="tool in lineTools"
+          :key="tool.id"
+          class="tool-btn"
+          :class="{ 'active': activeTool === tool.id }"
+          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          @click="selectTool(tool.id)"
+        >
+          <ToolIcon :name="tool.icon" class="w-4 h-4" />
+        </button>
+      </div>
 
-    <!-- Divider -->
-    <div class="toolbar-divider" />
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
 
-    <!-- Drawing Tools -->
-    <div class="flex flex-col gap-0.5">
-      <ToolButton
-        v-for="tool in drawingTools"
-        :key="tool.id"
-        :icon="tool.icon"
-        :label="tool.label"
-        :shortcut="tool.shortcut"
-        :active="activeTool === tool.id"
-        @click="selectTool(tool.id)"
-      />
-    </div>
+      <!-- Drawing Tools -->
+      <div class="tool-group" style="--group-index: 4;">
+        <button
+          v-for="tool in drawingTools"
+          :key="tool.id"
+          class="tool-btn"
+          :class="{ 'active': activeTool === tool.id }"
+          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          @click="selectTool(tool.id)"
+        >
+          <ToolIcon :name="tool.icon" class="w-4 h-4" />
+        </button>
+      </div>
 
-    <!-- Divider -->
-    <div class="toolbar-divider" />
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
 
-    <!-- Utility Tools -->
-    <div class="flex flex-col gap-0.5">
-      <ToolButton
-        v-for="tool in utilityTools"
-        :key="tool.id"
-        :icon="tool.icon"
-        :label="tool.label"
-        :shortcut="tool.shortcut"
-        :active="activeTool === tool.id"
-        @click="selectTool(tool.id)"
-      />
+      <!-- Utility Tools -->
+      <div class="tool-group" style="--group-index: 5;">
+        <button
+          v-for="tool in utilityTools"
+          :key="tool.id"
+          class="tool-btn"
+          :class="{ 'active': activeTool === tool.id }"
+          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          @click="selectTool(tool.id)"
+        >
+          <ToolIcon :name="tool.icon" class="w-4 h-4" />
+        </button>
+      </div>
     </div>
   </div>
 
@@ -228,9 +236,9 @@ onUnmounted(() => {
   <div v-else class="mobile-toolbar-wrapper">
     <div class="mobile-toolbar">
       <!-- Undo/Redo Section -->
-      <div class="toolbar-section">
+      <div class="mobile-section">
         <button
-          class="mobile-tool-btn"
+          class="mobile-btn mobile-btn-subtle"
           :class="{ 'disabled': !canvasStore.canUndo }"
           :disabled="!canvasStore.canUndo"
           @click="canvasStore.undo()"
@@ -238,7 +246,7 @@ onUnmounted(() => {
           <ToolIcon name="undo" class="w-4 h-4" />
         </button>
         <button
-          class="mobile-tool-btn"
+          class="mobile-btn mobile-btn-subtle"
           :class="{ 'disabled': !canvasStore.canRedo }"
           :disabled="!canvasStore.canRedo"
           @click="canvasStore.redo()"
@@ -248,28 +256,29 @@ onUnmounted(() => {
       </div>
 
       <!-- Separator -->
-      <div class="toolbar-separator" />
+      <div class="mobile-separator" />
 
       <!-- Primary Tools Section -->
-      <div class="toolbar-section tools-section">
+      <div class="mobile-section mobile-tools-section">
         <button
           v-for="tool in primaryTools"
           :key="tool.id"
-          class="mobile-tool-btn"
+          class="mobile-btn"
           :class="{ 'active': activeTool === tool.id }"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
+          <span class="mobile-btn-ripple" />
         </button>
       </div>
 
       <!-- Separator -->
-      <div class="toolbar-separator" />
+      <div class="mobile-separator" />
 
       <!-- More Tools -->
       <div class="more-tools-container">
         <button
-          class="mobile-tool-btn"
+          class="mobile-btn"
           :class="{ 'active': isSecondaryToolActive, 'menu-open': showMoreTools }"
           @click.stop="toggleMoreTools"
         >
@@ -278,14 +287,17 @@ onUnmounted(() => {
 
         <!-- Dropdown Menu -->
         <Transition
-          enter-active-class="transition-all duration-200 ease-out"
-          enter-from-class="opacity-0 scale-95 translate-y-2"
-          enter-to-class="opacity-100 scale-100 translate-y-0"
-          leave-active-class="transition-all duration-150 ease-in"
-          leave-from-class="opacity-100 scale-100 translate-y-0"
-          leave-to-class="opacity-0 scale-95 translate-y-2"
+          enter-active-class="dropdown-enter-active"
+          enter-from-class="dropdown-enter-from"
+          enter-to-class="dropdown-enter-to"
+          leave-active-class="dropdown-leave-active"
+          leave-from-class="dropdown-leave-from"
+          leave-to-class="dropdown-leave-to"
         >
-          <div v-if="showMoreTools" class="more-tools-dropdown">
+          <div v-if="showMoreTools" class="more-dropdown">
+            <!-- Dropdown accent -->
+            <div class="dropdown-accent" />
+            
             <button
               v-for="tool in secondaryTools"
               :key="tool.id"
@@ -293,8 +305,13 @@ onUnmounted(() => {
               :class="{ 'active': activeTool === tool.id }"
               @click="selectTool(tool.id)"
             >
-              <ToolIcon :name="tool.icon" class="w-5 h-5" />
-              <span class="tool-label">{{ tool.label }}</span>
+              <span class="dropdown-item-icon">
+                <ToolIcon :name="tool.icon" class="w-5 h-5" />
+              </span>
+              <span class="dropdown-item-label">{{ tool.label }}</span>
+              <span v-if="activeTool === tool.id" class="dropdown-item-check">
+                <ToolIcon name="check" class="w-4 h-4" />
+              </span>
             </button>
             
             <!-- Divider -->
@@ -306,8 +323,13 @@ onUnmounted(() => {
               :class="{ 'active': showGrid }"
               @click="toggleGrid"
             >
-              <ToolIcon name="grid" class="w-5 h-5" />
-              <span class="tool-label">{{ showGrid ? 'Hide Grid' : 'Show Grid' }}</span>
+              <span class="dropdown-item-icon">
+                <ToolIcon name="grid" class="w-5 h-5" />
+              </span>
+              <span class="dropdown-item-label">{{ showGrid ? 'Hide Grid' : 'Show Grid' }}</span>
+              <span v-if="showGrid" class="dropdown-item-check">
+                <ToolIcon name="check" class="w-4 h-4" />
+              </span>
             </button>
           </div>
         </Transition>
@@ -317,6 +339,155 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* ============================================
+   DESKTOP TOOLBAR
+   ============================================ */
+
+.toolbar-container {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  display: flex;
+  animation: toolbarSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toolbarSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.toolbar-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 6px;
+  gap: 3px;
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: 12px;
+  box-shadow: 
+    0 8px 32px -8px rgba(0, 0, 0, 0.12),
+    0 4px 16px -4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+}
+
+.dark .toolbar-inner {
+  box-shadow: 
+    0 8px 32px -12px rgba(0, 0, 0, 0.25),
+    0 4px 16px -6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: toolGroupFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--group-index, 0) * 0.05s);
+  opacity: 0;
+}
+
+@keyframes toolGroupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tool-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--color-toolbar-hover);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.tool-btn:hover {
+  color: var(--color-text-primary);
+  transform: scale(1.08);
+}
+
+.tool-btn:hover::before {
+  opacity: 1;
+}
+
+.tool-btn:active {
+  transform: scale(0.95);
+}
+
+.tool-btn.active {
+  color: white;
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  box-shadow: 
+    0 0 0 3px var(--color-accent-glow),
+    0 4px 12px -2px rgba(99, 102, 241, 0.4);
+  transform: scale(1);
+}
+
+.tool-btn.active::before {
+  display: none;
+}
+
+.tool-btn.active:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 0 4px var(--color-accent-glow),
+    0 6px 16px -2px rgba(99, 102, 241, 0.5);
+}
+
+.tool-btn.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.tool-divider {
+  height: 1px;
+  margin: 3px 5px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-toolbar-border) 20%,
+    var(--color-toolbar-border) 80%,
+    transparent 100%
+  );
+}
+
+/* ============================================
+   MOBILE TOOLBAR
+   ============================================ */
+
 .mobile-toolbar-wrapper {
   position: fixed;
   bottom: 0;
@@ -333,47 +504,66 @@ onUnmounted(() => {
 .mobile-toolbar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 5px;
-  background: var(--color-toolbar-bg-solid);
+  gap: 3px;
+  padding: 5px 6px;
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--color-toolbar-border);
-  border-radius: 18px;
+  border-radius: 20px;
   box-shadow: 
-    0 4px 24px -4px rgba(0, 0, 0, 0.12),
-    0 8px 16px -8px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 8px 40px -8px rgba(0, 0, 0, 0.15),
+    0 4px 20px -4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   pointer-events: auto;
   max-width: calc(100vw - 32px);
+  animation: mobileToolbarSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes mobileToolbarSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dark .mobile-toolbar {
   box-shadow: 
-    0 4px 24px -4px rgba(0, 0, 0, 0.4),
-    0 8px 16px -8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 8px 40px -12px rgba(0, 0, 0, 0.25),
+    0 4px 20px -6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.toolbar-section {
+.mobile-section {
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
 }
 
-.tools-section {
+.mobile-tools-section {
   background: var(--color-toolbar-hover);
-  border-radius: 13px;
+  border-radius: 14px;
   padding: 3px;
 }
 
-.toolbar-separator {
+.mobile-separator {
   width: 1px;
-  height: 22px;
-  background: var(--color-toolbar-border);
-  margin: 0 3px;
-  opacity: 0.5;
+  height: 28px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-toolbar-border) 30%,
+    var(--color-toolbar-border) 70%,
+    transparent 100%
+  );
+  margin: 0 4px;
 }
 
-.mobile-tool-btn {
+.mobile-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -384,57 +574,126 @@ onUnmounted(() => {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
   position: relative;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.mobile-tool-btn:active {
+.mobile-btn-subtle {
+  width: 34px;
+  height: 34px;
+}
+
+.mobile-btn-ripple {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, var(--color-accent-primary) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0);
+  pointer-events: none;
+}
+
+.mobile-btn:active .mobile-btn-ripple {
+  animation: ripple 0.4s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    opacity: 0.3;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+.mobile-btn:active {
   transform: scale(0.92);
 }
 
-.mobile-tool-btn.disabled {
+.mobile-btn.disabled {
   opacity: 0.3;
   pointer-events: none;
 }
 
-.mobile-tool-btn.active {
-  background: var(--color-accent-primary);
+.mobile-btn.active {
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
   color: white;
   box-shadow: 
-    0 2px 8px -2px var(--color-accent-primary),
+    0 4px 12px -2px rgba(99, 102, 241, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.mobile-tool-btn.menu-open {
+.mobile-btn.menu-open {
   background: var(--color-toolbar-active);
   color: var(--color-text-primary);
 }
+
+/* ============================================
+   DROPDOWN MENU
+   ============================================ */
 
 .more-tools-container {
   position: relative;
 }
 
-.more-tools-dropdown {
+.more-dropdown {
   position: absolute;
-  bottom: calc(100% + 12px);
+  bottom: calc(100% + 14px);
   right: -8px;
-  background: var(--color-toolbar-bg-solid);
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--color-toolbar-border);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 8px;
   box-shadow: 
-    0 8px 32px -8px rgba(0, 0, 0, 0.2),
-    0 4px 16px -4px rgba(0, 0, 0, 0.1);
-  min-width: 160px;
+    0 12px 48px -12px rgba(0, 0, 0, 0.25),
+    0 8px 24px -8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  min-width: 180px;
   transform-origin: bottom right;
+  overflow: hidden;
 }
 
-.dark .more-tools-dropdown {
+.dark .more-dropdown {
   box-shadow: 
-    0 8px 32px -8px rgba(0, 0, 0, 0.5),
-    0 4px 16px -4px rgba(0, 0, 0, 0.3);
+    0 12px 48px -16px rgba(0, 0, 0, 0.3),
+    0 8px 24px -10px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.dropdown-accent {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border-radius: 0 0 2px 2px;
+}
+
+.dropdown-enter-active {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-leave-active {
+  transition: all 0.15s ease-in;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: scale(0.92) translateY(8px);
+}
+
+.dropdown-enter-to,
+.dropdown-leave-from {
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
 
 .dropdown-item {
@@ -443,33 +702,75 @@ onUnmounted(() => {
   gap: 12px;
   width: 100%;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   color: var(--color-text-primary);
   background: transparent;
   border: none;
   cursor: pointer;
   transition: all 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.dropdown-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-secondary);
+  transition: all 0.15s ease;
+}
+
+.dropdown-item-label {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.dropdown-item-check {
+  color: var(--color-accent-primary);
 }
 
 .dropdown-item:active {
   transform: scale(0.98);
+}
+
+.dropdown-item:hover {
   background: var(--color-toolbar-hover);
 }
 
+.dropdown-item:hover .dropdown-item-icon {
+  background: var(--color-toolbar-active);
+  color: var(--color-text-primary);
+}
+
 .dropdown-item.active {
-  background: var(--color-accent-primary);
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
   color: white;
 }
 
-.dropdown-item .tool-label {
-  font-size: 14px;
-  font-weight: 500;
+.dropdown-item.active .dropdown-item-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.dropdown-item.active .dropdown-item-check {
+  color: white;
 }
 
 .dropdown-divider {
   height: 1px;
-  background: var(--color-toolbar-border);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-toolbar-border) 10%,
+    var(--color-toolbar-border) 90%,
+    transparent 100%
+  );
   margin: 6px 0;
 }
 </style>

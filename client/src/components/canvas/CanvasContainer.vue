@@ -293,7 +293,7 @@ function handlePointerDown(e: PointerEvent) {
         const bounds = getCommonBounds(selectedElements)
         if (bounds) {
           const angle = selectedElements.length === 1 ? selectedElements[0].angle || 0 : 0
-          // Skip regular transform handles for lines/arrows
+          // Skip regular transform handles for lines/arrows (but allow for freedraw)
           if (!(selectedElements.length === 1 && (selectedElements[0].type === 'line' || selectedElements[0].type === 'arrow'))) {
             const handle = getTransformHandleAtPoint(bounds, point, canvasStore.zoom, angle, isMobile.value)
             if (handle) {
@@ -307,7 +307,10 @@ function handlePointerDown(e: PointerEvent) {
                   y: el.y, 
                   width: el.width, 
                   height: el.height,
-                  fontSize: el.type === 'text' ? el.fontSize : undefined
+                  fontSize: el.type === 'text' ? el.fontSize : undefined,
+                  points: (el.type === 'freedraw' || el.type === 'line' || el.type === 'arrow') && el.points 
+                    ? [...el.points.map(p => ({ ...p }))] 
+                    : undefined
                 }])
               )
               return
@@ -383,14 +386,17 @@ function handleSelectionStart(point: Point, addToSelection: boolean) {
         activeHandle.value = handle
         isResizing.value = true
         startElementBounds.value = { ...bounds }
-        // Store original element dimensions for resize calculation (include fontSize for text)
+        // Store original element dimensions for resize calculation (include fontSize for text, points for point-based elements)
         startElementDimensions.value = new Map(
           selectedElements.map(el => [el.id, { 
             x: el.x, 
             y: el.y, 
             width: el.width, 
             height: el.height,
-            fontSize: el.type === 'text' ? el.fontSize : undefined
+            fontSize: el.type === 'text' ? el.fontSize : undefined,
+            points: (el.type === 'freedraw' || el.type === 'line' || el.type === 'arrow') && el.points 
+              ? [...el.points.map(p => ({ ...p }))] 
+              : undefined
           }])
         )
         return
@@ -948,6 +954,11 @@ function handleResize(point: Point) {
   // Calculate scale factor for font sizing
   const scaleY = newHeight / bounds.height
 
+  // Calculate scale factors for point-based elements
+  const scaleX = newWidth / bounds.width
+  const scaleXAbs = Math.abs(scaleX)
+  const scaleYAbs = Math.abs(scaleY)
+
   // Update each selected element using ORIGINAL dimensions
   canvasStore.selectedElementIds.forEach(id => {
     const originalDims = startElementDimensions.value.get(id)
@@ -962,7 +973,7 @@ function handleResize(point: Point) {
 
     // Special handling for text elements - maintain aspect ratio
     if (element.type === 'text' && originalDims.fontSize && element.text) {
-      const newFontSize = Math.max(8, Math.round(originalDims.fontSize * scaleY))
+      const newFontSize = Math.max(8, Math.round(originalDims.fontSize * scaleYAbs))
       
       // Recalculate text dimensions with new font size
       const textDims = measureTextDimensions(element.text, newFontSize, element.fontFamily)
@@ -974,8 +985,22 @@ function handleResize(point: Point) {
         height: textDims.height,
         fontSize: newFontSize,
       })
+    } else if ((element.type === 'freedraw' || element.type === 'line' || element.type === 'arrow') && originalDims.points) {
+      // Scale points for point-based elements
+      const scaledPoints = originalDims.points.map(p => ({
+        x: p.x * scaleXAbs,
+        y: p.y * scaleYAbs,
+      }))
+      
+      canvasStore.updateElement(id, {
+        x: newX + relX * newWidth,
+        y: newY + relY * newHeight,
+        width: Math.abs(originalDims.width * scaleXAbs),
+        height: Math.abs(originalDims.height * scaleYAbs),
+        points: scaledPoints,
+      })
     } else {
-      // Normal resize for non-text elements
+      // Normal resize for non-text, non-point-based elements
       const relWidth = originalDims.width / bounds.width
       const relHeight = originalDims.height / bounds.height
 

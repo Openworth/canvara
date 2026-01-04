@@ -28,7 +28,7 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
   <!-- Desktop: Bottom right -->
   <div 
     v-if="!isMobile"
-    class="absolute bottom-3 right-3 z-10 flex items-center gap-0.5 panel-glass p-0.5"
+    class="zoom-container absolute bottom-3 right-3 z-10 flex items-center gap-0.5 panel-glass p-0.5"
   >
     <!-- Zoom out -->
     <button
@@ -77,4 +77,20 @@ const zoomPercent = computed(() => Math.round(canvasStore.zoom * 100))
 
 <style scoped>
 /* Mobile zoom is hidden - pinch-to-zoom and grid in toolbar menu */
+
+/* ZoomControls entrance animation */
+.zoom-container {
+  animation: zoomSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+@keyframes zoomSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

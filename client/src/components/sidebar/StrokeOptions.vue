@@ -92,7 +92,7 @@ const styles: { value: StrokeStyle; label: string }[] = [
       <button
         v-for="s in styles"
         :key="s.value"
-        class="flex-1 py-1.5 flex items-center justify-center rounded-md transition-colors duration-150"
+        class="flex-1 py-3 flex items-center justify-center rounded-md transition-colors duration-150"
         :class="style === s.value ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
         :style="style !== s.value ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
         @click="emit('update:style', s.value)"

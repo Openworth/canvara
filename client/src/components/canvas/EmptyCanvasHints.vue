@@ -125,7 +125,7 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 /* Toolbar hint - positioned further from left toolbar */
 .hint-toolbar {
   position: absolute;
-  left: 70px;
+  left: 85px;
   top: 42%;
   transform: translateY(-50%);
   display: flex;
@@ -152,8 +152,8 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 /* Collaboration hint - positioned top right */
 .hint-collab {
   position: absolute;
-  right: 265px;
-  top: 105px;
+  right: 145px;
+  top: 125px;
 }
 
 .hint-text-right {

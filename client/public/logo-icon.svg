@@ -5,13 +5,13 @@
       <stop offset="100%" stop-color="#312e81"/>
     </linearGradient>
     <linearGradient id="glowStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#a78bfa"/>
-      <stop offset="50%" stop-color="#c084fc"/>
-      <stop offset="100%" stop-color="#f472b6"/>
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#A5B4FC"/>
     </linearGradient>
     <linearGradient id="accentStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#6366f1"/>
+      <stop offset="0%" stop-color="#A5B4FC"/>
+      <stop offset="100%" stop-color="#6366F1"/>
     </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
@@ -26,7 +26,7 @@
   <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#darkFrame)"/>
   
   <!-- Inner subtle border -->
-  <rect x="10" y="10" width="44" height="44" rx="10" fill="none" stroke="#4c1d95" stroke-width="1" stroke-opacity="0.4"/>
+  <rect x="10" y="10" width="44" height="44" rx="10" fill="none" stroke="#4338ca" stroke-width="1" stroke-opacity="0.4"/>
   
   <!-- Primary flowing brush stroke -->
   <path d="M18 46 C26 34, 34 26, 46 16" stroke="url(#glowStroke)" stroke-width="5" stroke-linecap="round" fill="none" filter="url(#glow)"/>
@@ -35,9 +35,9 @@
   <path d="M20 24 Q28 32 40 28" stroke="url(#accentStroke)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
   
   <!-- Highlight dot with glow -->
-  <circle cx="42" cy="40" r="4" fill="#f472b6" filter="url(#glow)"/>
-  <circle cx="42" cy="40" r="2" fill="#fce7f3"/>
+  <circle cx="42" cy="40" r="4" fill="#6366F1" filter="url(#glow)"/>
+  <circle cx="42" cy="40" r="2" fill="#c7d2fe"/>
   
   <!-- Small accent dot -->
-  <circle cx="24" cy="38" r="2" fill="#818cf8" opacity="0.8"/>
+  <circle cx="24" cy="38" r="2" fill="#A5B4FC" opacity="0.8"/>
 </svg>

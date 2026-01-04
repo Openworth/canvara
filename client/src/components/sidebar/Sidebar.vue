@@ -198,6 +198,29 @@ const panelTitle = computed(() => {
   return 'Style'
 })
 
+// Icon mapping for panel titles
+const panelIcon = computed(() => {
+  if (hasSelection.value) {
+    const type = selectedElement.value?.type
+    if (type === 'text') return 'text'
+    if (type === 'line') return 'line'
+    if (type === 'arrow') return 'arrow'
+    if (type === 'freedraw') return 'pencil'
+    if (type === 'rectangle') return 'rectangle'
+    if (type === 'ellipse') return 'ellipse'
+    if (type === 'diamond') return 'diamond'
+    return 'cursor'
+  }
+  if (activeTool.value === 'text') return 'text'
+  if (activeTool.value === 'line') return 'line'
+  if (activeTool.value === 'arrow') return 'arrow'
+  if (activeTool.value === 'freedraw') return 'pencil'
+  if (activeTool.value === 'rectangle') return 'rectangle'
+  if (activeTool.value === 'ellipse') return 'ellipse'
+  if (activeTool.value === 'diamond') return 'diamond'
+  return 'cursor'
+})
+
 // Get current values (from selection or defaults)
 const strokeColor = computed(() => 
   selectedElement.value?.strokeColor ?? canvasStore.appState.currentItemStrokeColor
@@ -226,97 +249,114 @@ const opacity = computed(() =>
   <!-- Desktop: Right sidebar -->
   <Transition
     v-if="!isMobile"
-    enter-active-class="transition-all duration-200 ease-out"
-    enter-from-class="opacity-0 translate-x-4"
-    enter-to-class="opacity-100 translate-x-0"
-    leave-active-class="transition-all duration-150 ease-in"
-    leave-from-class="opacity-100 translate-x-0"
-    leave-to-class="opacity-0 translate-x-4"
+    enter-active-class="sidebar-enter-active"
+    enter-from-class="sidebar-enter-from"
+    enter-to-class="sidebar-enter-to"
+    leave-active-class="sidebar-leave-active"
+    leave-from-class="sidebar-leave-from"
+    leave-to-class="sidebar-leave-to"
   >
     <div
       v-if="shouldShowSidebar"
-      class="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-56 panel-glass p-4"
+      class="sidebar-container"
     >
-      <h3 class="text-sm font-semibold mb-4" style="color: var(--color-text-primary);">
-        {{ panelTitle }}
-      </h3>
-
-      <!-- Text Options Panel -->
-      <TextOptions v-if="panelMode === 'text'" />
-
-      <!-- Shape/Line Options Panel -->
-      <template v-else>
-        <!-- Stroke Color -->
-        <div class="mb-4">
-          <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Stroke</label>
-          <ColorPicker
-            :value="strokeColor"
-            @change="canvasStore.setStrokeColor($event)"
-          />
+      <!-- Main panel content -->
+      <div class="sidebar-inner">
+        <!-- Header with icon and title -->
+        <div class="sidebar-header">
+          <div class="sidebar-header-icon">
+            <ToolIcon :name="panelIcon" class="w-4 h-4" />
+          </div>
+          <h3 class="sidebar-header-title">{{ panelTitle }}</h3>
         </div>
 
-        <!-- Background Color (not for lines) -->
-        <div v-if="panelMode === 'shape'" class="mb-4">
-          <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Background</label>
-          <ColorPicker
-            :value="backgroundColor"
-            @change="canvasStore.setBackgroundColor($event)"
-          />
+        <!-- Divider -->
+        <div class="sidebar-divider" />
+
+        <!-- Text Options Panel -->
+        <div v-if="panelMode === 'text'" class="sidebar-content">
+          <TextOptions />
         </div>
 
-        <!-- Fill Style (not for lines) -->
-        <FillOptions
-          v-if="panelMode === 'shape'"
-          :value="fillStyle"
-          @change="canvasStore.setFillStyle($event)"
-          class="mb-4"
-        />
+        <!-- Shape/Line Options Panel -->
+        <div v-else class="sidebar-content">
+          <!-- Stroke Color Section -->
+          <div class="option-section" style="--section-index: 0;">
+            <label class="option-label">Stroke</label>
+            <ColorPicker
+              :value="strokeColor"
+              @change="canvasStore.setStrokeColor($event)"
+            />
+          </div>
 
-        <!-- Stroke Options -->
-        <StrokeOptions
-          :width="strokeWidth"
-          :style="strokeStyle"
-          @update:width="canvasStore.setStrokeWidth($event)"
-          @update:style="canvasStore.setStrokeStyle($event)"
-          class="mb-4"
-        />
+          <!-- Background Color (not for lines) -->
+          <div v-if="panelMode === 'shape'" class="option-section" style="--section-index: 1;">
+            <label class="option-label">Background</label>
+            <ColorPicker
+              :value="backgroundColor"
+              @change="canvasStore.setBackgroundColor($event)"
+            />
+          </div>
 
-        <!-- Arrow Options (arrowhead styles) -->
-        <ArrowOptions v-if="showArrowOptions" class="mb-4" />
+          <!-- Fill Style (not for lines) -->
+          <div v-if="panelMode === 'shape'" class="option-section" style="--section-index: 2;">
+            <FillOptions
+              :value="fillStyle"
+              @change="canvasStore.setFillStyle($event)"
+            />
+          </div>
 
-        <!-- Roughness -->
-        <div class="mb-4">
-          <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Sloppiness</label>
-          <div class="flex gap-1.5">
-            <button
-              v-for="r in [0, 1, 2]"
-              :key="r"
-              class="flex-1 py-2 text-[11px] font-medium rounded-md transition-colors duration-150"
-              :class="roughness === r ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
-              :style="roughness !== r ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
-              @click="canvasStore.setRoughness(r)"
-            >
-              {{ r === 0 ? 'None' : r === 1 ? 'Low' : 'High' }}
-            </button>
+          <!-- Stroke Options -->
+          <div class="option-section" style="--section-index: 3;">
+            <StrokeOptions
+              :width="strokeWidth"
+              :style="strokeStyle"
+              @update:width="canvasStore.setStrokeWidth($event)"
+              @update:style="canvasStore.setStrokeStyle($event)"
+            />
+          </div>
+
+          <!-- Arrow Options (arrowhead styles) -->
+          <div v-if="showArrowOptions" class="option-section" style="--section-index: 4;">
+            <ArrowOptions />
+          </div>
+
+          <!-- Roughness / Sloppiness -->
+          <div class="option-section" style="--section-index: 5;">
+            <label class="option-label">Sloppiness</label>
+            <div class="roughness-buttons">
+              <button
+                v-for="r in [0, 1, 2]"
+                :key="r"
+                class="roughness-btn"
+                :class="{ 'active': roughness === r }"
+                @click="canvasStore.setRoughness(r)"
+              >
+                {{ r === 0 ? 'None' : r === 1 ? 'Low' : 'High' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Opacity -->
+          <div class="option-section" style="--section-index: 6;">
+            <div class="opacity-header">
+              <label class="option-label">Opacity</label>
+              <span class="opacity-value">{{ opacity }}%</span>
+            </div>
+            <div class="opacity-slider-container">
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="10"
+                :value="opacity"
+                @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
+                class="opacity-slider"
+              />
+            </div>
           </div>
         </div>
-
-        <!-- Opacity -->
-        <div>
-          <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">
-            Opacity: {{ opacity }}%
-          </label>
-          <input
-            type="range"
-            min="10"
-            max="100"
-            step="10"
-            :value="opacity"
-            @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
-            class="w-full"
-          />
-        </div>
-      </template>
+      </div>
     </div>
   </Transition>
 
@@ -331,6 +371,9 @@ const opacity = computed(() =>
     @mousemove="handleDragMove"
     @mouseup="handleDragEnd"
   >
+    <!-- Sheet accent gradient at top -->
+    <div class="sheet-accent-gradient" />
+    
     <!-- Drag handle -->
     <div
       class="sheet-handle"
@@ -339,13 +382,19 @@ const opacity = computed(() =>
       @click="toggleSheet"
     >
       <div class="sheet-handle-bar" />
-      <span class="sheet-title">{{ panelTitle }}</span>
-      <ToolIcon 
-        :name="sheetState === 'expanded' ? 'chevronUp' : 'chevronUp'" 
-        class="w-4 h-4 transition-transform"
-        :class="{ 'rotate-180': sheetState !== 'expanded' }"
-        style="color: var(--color-text-secondary);"
-      />
+      <div class="sheet-header">
+        <div class="sheet-header-icon">
+          <ToolIcon :name="panelIcon" class="w-4 h-4" />
+        </div>
+        <span class="sheet-title">{{ panelTitle }}</span>
+      </div>
+      <div class="sheet-expand-indicator">
+        <ToolIcon 
+          name="chevronUp" 
+          class="w-4 h-4 transition-transform duration-200"
+          :class="{ 'rotate-180': sheetState !== 'expanded' }"
+        />
+      </div>
     </div>
 
     <!-- Content -->
@@ -356,17 +405,17 @@ const opacity = computed(() =>
       <!-- Shape/Line Options Panel -->
       <template v-else>
         <!-- Compact color row for peek state -->
-        <div v-if="sheetState === 'peek'" class="flex gap-4 mb-4">
-          <div class="flex-1">
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Stroke</label>
+        <div v-if="sheetState === 'peek'" class="peek-compact-row">
+          <div class="peek-color-section">
+            <label class="option-label">Stroke</label>
             <ColorPicker
               :value="strokeColor"
               @change="canvasStore.setStrokeColor($event)"
               compact
             />
           </div>
-          <div v-if="panelMode === 'shape'" class="flex-1">
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Fill</label>
+          <div v-if="panelMode === 'shape'" class="peek-color-section">
+            <label class="option-label">Fill</label>
             <ColorPicker
               :value="backgroundColor"
               @change="canvasStore.setBackgroundColor($event)"
@@ -378,8 +427,8 @@ const opacity = computed(() =>
         <!-- Full options for expanded state -->
         <template v-if="sheetState === 'expanded'">
           <!-- Stroke Color -->
-          <div class="mb-4">
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Stroke</label>
+          <div class="option-section">
+            <label class="option-label">Stroke</label>
             <ColorPicker
               :value="strokeColor"
               @change="canvasStore.setStrokeColor($event)"
@@ -387,8 +436,8 @@ const opacity = computed(() =>
           </div>
 
           <!-- Background Color (not for lines) -->
-          <div v-if="panelMode === 'shape'" class="mb-4">
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Background</label>
+          <div v-if="panelMode === 'shape'" class="option-section">
+            <label class="option-label">Background</label>
             <ColorPicker
               :value="backgroundColor"
               @change="canvasStore.setBackgroundColor($event)"
@@ -396,35 +445,37 @@ const opacity = computed(() =>
           </div>
 
           <!-- Fill Style (not for lines) -->
-          <FillOptions
-            v-if="panelMode === 'shape'"
-            :value="fillStyle"
-            @change="canvasStore.setFillStyle($event)"
-            class="mb-4"
-          />
+          <div v-if="panelMode === 'shape'" class="option-section">
+            <FillOptions
+              :value="fillStyle"
+              @change="canvasStore.setFillStyle($event)"
+            />
+          </div>
 
           <!-- Stroke Options -->
-          <StrokeOptions
-            :width="strokeWidth"
-            :style="strokeStyle"
-            @update:width="canvasStore.setStrokeWidth($event)"
-            @update:style="canvasStore.setStrokeStyle($event)"
-            class="mb-4"
-          />
+          <div class="option-section">
+            <StrokeOptions
+              :width="strokeWidth"
+              :style="strokeStyle"
+              @update:width="canvasStore.setStrokeWidth($event)"
+              @update:style="canvasStore.setStrokeStyle($event)"
+            />
+          </div>
 
           <!-- Arrow Options (arrowhead styles) -->
-          <ArrowOptions v-if="showArrowOptions" class="mb-4" />
+          <div v-if="showArrowOptions" class="option-section">
+            <ArrowOptions />
+          </div>
 
           <!-- Roughness -->
-          <div class="mb-4">
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">Sloppiness</label>
-            <div class="flex gap-1.5">
+          <div class="option-section">
+            <label class="option-label">Sloppiness</label>
+            <div class="roughness-buttons">
               <button
                 v-for="r in [0, 1, 2]"
                 :key="r"
-                class="flex-1 py-3 text-xs font-medium rounded-md transition-colors duration-150"
-                :class="roughness === r ? 'bg-accent-primary text-white shadow-sm' : 'hover:bg-[var(--color-toolbar-hover)]'"
-                :style="roughness !== r ? { backgroundColor: 'var(--color-toolbar-hover)', color: 'var(--color-text-primary)' } : {}"
+                class="roughness-btn mobile"
+                :class="{ 'active': roughness === r }"
                 @click="canvasStore.setRoughness(r)"
               >
                 {{ r === 0 ? 'None' : r === 1 ? 'Low' : 'High' }}
@@ -433,24 +484,27 @@ const opacity = computed(() =>
           </div>
 
           <!-- Opacity -->
-          <div>
-            <label class="text-[11px] font-medium block mb-2" style="color: var(--color-text-secondary);">
-              Opacity: {{ opacity }}%
-            </label>
-            <input
-              type="range"
-              min="10"
-              max="100"
-              step="10"
-              :value="opacity"
-              @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
-              class="w-full"
-            />
+          <div class="option-section">
+            <div class="opacity-header">
+              <label class="option-label">Opacity</label>
+              <span class="opacity-value">{{ opacity }}%</span>
+            </div>
+            <div class="opacity-slider-container">
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="10"
+                :value="opacity"
+                @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
+                class="opacity-slider"
+              />
+            </div>
           </div>
         </template>
 
         <!-- Stroke width quick access for peek state -->
-        <div v-if="sheetState === 'peek'">
+        <div v-if="sheetState === 'peek'" class="peek-stroke-options">
           <StrokeOptions
             :width="strokeWidth"
             :style="strokeStyle"
@@ -465,40 +519,298 @@ const opacity = computed(() =>
 </template>
 
 <style scoped>
+/* ============================================
+   DESKTOP SIDEBAR
+   ============================================ */
+
+.sidebar-container {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 240px;
+}
+
+.sidebar-enter-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.sidebar-enter-from,
+.sidebar-leave-to {
+  opacity: 0;
+  transform: translateY(-50%) translateX(20px);
+}
+
+.sidebar-enter-to,
+.sidebar-leave-from {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.sidebar-inner {
+  flex: 1;
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: 14px;
+  box-shadow: 
+    0 8px 32px -8px rgba(0, 0, 0, 0.12),
+    0 4px 16px -4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dark .sidebar-inner {
+  box-shadow: 
+    0 8px 32px -12px rgba(0, 0, 0, 0.25),
+    0 4px 16px -6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.sidebar-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  color: white;
+  box-shadow: 0 2px 8px -2px rgba(99, 102, 241, 0.4);
+}
+
+.sidebar-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.sidebar-divider {
+  height: 1px;
+  margin: 0 12px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-toolbar-border) 10%,
+    var(--color-toolbar-border) 90%,
+    transparent 100%
+  );
+}
+
+.sidebar-content {
+  padding: 12px 16px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ============================================
+   OPTION SECTIONS
+   ============================================ */
+
+.option-section {
+  margin-bottom: 16px;
+  animation: sectionFadeIn 0.3s ease forwards;
+  animation-delay: calc(var(--section-index, 0) * 0.04s);
+  opacity: 0;
+}
+
+@keyframes sectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.option-section:last-child {
+  margin-bottom: 0;
+}
+
+.option-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   ROUGHNESS BUTTONS
+   ============================================ */
+
+.roughness-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.roughness-btn {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-primary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.roughness-btn:hover {
+  background: var(--color-toolbar-active);
+  transform: translateY(-1px);
+}
+
+.roughness-btn.active {
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 
+    0 4px 12px -2px rgba(99, 102, 241, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.roughness-btn.mobile {
+  padding: 14px 8px;
+  font-size: 12px;
+}
+
+/* ============================================
+   OPACITY SLIDER
+   ============================================ */
+
+.opacity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.opacity-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-accent-primary);
+  background: var(--color-accent-glow);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.opacity-slider-container {
+  position: relative;
+  padding: 4px 0;
+}
+
+.opacity-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-toolbar-active) 0%,
+    var(--color-accent-primary) 100%
+  );
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.opacity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 
+    0 2px 8px -2px rgba(99, 102, 241, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.15s ease;
+}
+
+.opacity-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 
+    0 0 0 4px var(--color-accent-glow),
+    0 4px 12px -2px rgba(99, 102, 241, 0.5);
+}
+
+/* ============================================
+   MOBILE BOTTOM SHEET
+   ============================================ */
+
 .mobile-sheet {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom, 0px)); /* Above the floating toolbar */
-  left: 16px;
-  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  left: 12px;
+  right: 12px;
   z-index: 40;
-  background: var(--color-toolbar-bg-solid);
+  background: var(--color-toolbar-bg);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--color-toolbar-border);
-  border-radius: 20px;
+  border-radius: 22px;
   transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   box-shadow: 
-    0 -4px 24px -4px rgba(0, 0, 0, 0.12),
-    0 -8px 16px -8px rgba(0, 0, 0, 0.08);
+    0 -8px 40px -8px rgba(0, 0, 0, 0.15),
+    0 -4px 20px -4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
 }
 
 .dark .mobile-sheet {
   box-shadow: 
-    0 -4px 24px -4px rgba(0, 0, 0, 0.4),
-    0 -8px 16px -8px rgba(0, 0, 0, 0.3);
+    0 -8px 40px -12px rgba(0, 0, 0, 0.25),
+    0 -4px 20px -6px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .mobile-sheet.dragging {
   transition: none;
 }
 
+.sheet-accent-gradient {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border-radius: 0 0 2px 2px;
+  opacity: 0.8;
+}
+
 .sheet-handle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  padding-top: 18px;
+  padding: 16px;
+  padding-top: 20px;
   cursor: grab;
   -webkit-tap-highlight-color: transparent;
   touch-action: none;
@@ -514,17 +826,46 @@ const opacity = computed(() =>
   top: 8px;
   left: 50%;
   transform: translateX(-50%);
-  width: 36px;
+  width: 40px;
   height: 4px;
   background: var(--color-text-tertiary);
   border-radius: 2px;
-  opacity: 0.4;
+  opacity: 0.3;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sheet-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  color: white;
+  box-shadow: 0 2px 8px -2px rgba(99, 102, 241, 0.4);
 }
 
 .sheet-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--color-text-primary);
+}
+
+.sheet-expand-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-secondary);
 }
 
 .sheet-content {
@@ -532,5 +873,23 @@ const opacity = computed(() =>
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+}
+
+/* ============================================
+   PEEK STATE COMPACT LAYOUTS
+   ============================================ */
+
+.peek-compact-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.peek-color-section {
+  flex: 1;
+}
+
+.peek-stroke-options {
+  margin-top: 4px;
 }
 </style>

@@ -5,24 +5,24 @@
       <stop offset="100%" stop-color="#312e81"/>
     </linearGradient>
     <linearGradient id="stroke1" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#a78bfa"/>
-      <stop offset="50%" stop-color="#c084fc"/>
-      <stop offset="100%" stop-color="#f472b6"/>
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="50%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#A5B4FC"/>
     </linearGradient>
     <linearGradient id="stroke2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8"/>
-      <stop offset="100%" stop-color="#6366f1"/>
+      <stop offset="0%" stop-color="#A5B4FC"/>
+      <stop offset="100%" stop-color="#6366F1"/>
     </linearGradient>
   </defs>
   <!-- Dark frame -->
   <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#frame)"/>
   <!-- Subtle inner border -->
-  <rect x="4" y="4" width="24" height="24" rx="6" fill="none" stroke="#4c1d95" stroke-width="0.5" stroke-opacity="0.5"/>
+  <rect x="4" y="4" width="24" height="24" rx="6" fill="none" stroke="#4338ca" stroke-width="0.5" stroke-opacity="0.5"/>
   <!-- Primary brush stroke - flowing curve -->
   <path d="M8 24 C12 18, 16 14, 24 8" stroke="url(#stroke1)" stroke-width="3" stroke-linecap="round" fill="none"/>
   <!-- Secondary accent stroke -->
   <path d="M10 12 Q14 16 20 14" stroke="url(#stroke2)" stroke-width="2" stroke-linecap="round" fill="none"/>
   <!-- Glow dot -->
-  <circle cx="22" cy="20" r="2.5" fill="#f472b6"/>
-  <circle cx="22" cy="20" r="1.5" fill="#fce7f3"/>
+  <circle cx="22" cy="20" r="2.5" fill="#6366F1"/>
+  <circle cx="22" cy="20" r="1.5" fill="#c7d2fe"/>
 </svg>

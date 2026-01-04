@@ -750,6 +750,10 @@ export const useCanvasStore = defineStore('canvas', () => {
   function setThemeMode(isDark: boolean) {
     // Set appropriate background
     appState.value.viewBackgroundColor = isDark ? '#121212' : '#ffffff'
+    
+    // Set appropriate default stroke color based on theme
+    // In dark mode, use a light stroke color so it's visible on dark canvas
+    appState.value.currentItemStrokeColor = isDark ? '#ffffff' : '#1e1e1e'
   }
 
   return {

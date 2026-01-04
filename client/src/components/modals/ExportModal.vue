@@ -626,6 +626,12 @@ function downloadFile(url: string, filename: string) {
   overflow: hidden;
 }
 
+.dark .export-modal {
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 24px 48px -12px rgba(0, 0, 0, 0.1);
+}
+
 @keyframes modalSlideIn {
   from {
     opacity: 0;

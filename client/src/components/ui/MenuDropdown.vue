@@ -12,15 +12,14 @@ const emit = defineEmits<{
   close: []
   export: []
   share: []
+  clearCanvas: []
 }>()
 
 const canvasStore = useCanvasStore()
 const appStore = useAppStore()
 
 function handleClearCanvas() {
-  if (confirm('Are you sure you want to clear the canvas? This cannot be undone.')) {
-    canvasStore.clearCanvas()
-  }
+  emit('clearCanvas')
   emit('close')
 }
 
