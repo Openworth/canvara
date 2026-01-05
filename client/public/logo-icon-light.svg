@@ -1,46 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs>
-    <linearGradient id="lightFrame" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f8fafc"/>
-      <stop offset="100%" stop-color="#e2e8f0"/>
-    </linearGradient>
-    <linearGradient id="lightGlowStroke" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#4F46E5"/>
-      <stop offset="50%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#818cf8"/>
-    </linearGradient>
-    <linearGradient id="lightAccentStroke" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1"/>
-      <stop offset="100%" stop-color="#4F46E5"/>
-    </linearGradient>
-    <filter id="lightGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="frameShadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#64748b" flood-opacity="0.15"/>
-    </filter>
-  </defs>
-  
-  <!-- Light frame with subtle shadow -->
-  <rect x="6" y="6" width="52" height="52" rx="14" fill="url(#lightFrame)" filter="url(#frameShadow)"/>
-  
-  <!-- Inner subtle border -->
-  <rect x="10" y="10" width="44" height="44" rx="10" fill="none" stroke="#cbd5e1" stroke-width="1" stroke-opacity="0.6"/>
-  
-  <!-- Primary flowing brush stroke -->
-  <path d="M18 46 C26 34, 34 26, 46 16" stroke="url(#lightGlowStroke)" stroke-width="5" stroke-linecap="round" fill="none" filter="url(#lightGlow)"/>
-  
-  <!-- Secondary accent curve -->
-  <path d="M20 24 Q28 32 40 28" stroke="url(#lightAccentStroke)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-  
-  <!-- Highlight dot with glow -->
-  <circle cx="42" cy="40" r="4" fill="#6366F1" filter="url(#lightGlow)"/>
-  <circle cx="42" cy="40" r="2" fill="#e0e7ff"/>
-  
-  <!-- Small accent dot -->
-  <circle cx="24" cy="38" r="2" fill="#4F46E5" opacity="0.9"/>
+<svg width="95" height="95" viewBox="0 0 95 95" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1144_293)">
+<rect width="95" height="95" rx="26" fill="#818CF8"/>
+<path d="M79.2656 24.0088C76.3891 24.1828 70.1403 24.8841 66.4201 26.0205C64.148 26.7145 61.2207 28.027 57.6521 30.0901C54.0835 32.1532 49.9941 35.0245 47.1914 37.3737C42.7017 41.1369 41.1273 43.952 40.2071 45.3111C39.7465 45.9915 39.1999 46.5833 37.7129 49.0287C36.2258 51.4742 33.7896 55.7375 31.9691 59.326C27.765 68.9152 27.5014 70.0569 27.3695 70.9771C27.3247 71.4622 27.3247 71.9842 27.3247 72.5221" stroke="white" stroke-width="6" stroke-linecap="round"/>
+<path d="M52.3724 17.9453C52.1113 18.47 51.2333 19.522 50.267 20.665C49.6559 21.3878 48.254 24.5974 45.7993 31.2074C44.3708 35.0541 43.3447 40.1665 42.6736 45.8985C42.0026 51.6304 41.9156 57.895 41.9143 61.5137C41.9122 67.255 42.965 70.3924 43.6255 72.8234C43.8456 73.8305 44.1963 74.8904 44.5918 75.8119C44.7262 76.2114 44.7262 76.4724 44.9899 77.005" stroke="white" stroke-width="6" stroke-linecap="round"/>
+<path d="M55.0089 44.0469C54.6609 45.0066 53.9543 46.9419 53.7355 48.0413C53.485 49.2995 53.427 53.6757 54.1705 58.2726C54.5552 60.6509 55.6206 62.4978 56.7623 64.4291C57.2026 65.1343 57.6429 65.5773 58.2559 66.0585C58.6079 66.3656 59.0429 66.8007 59.4912 67.2489" stroke="white" stroke-width="6" stroke-linecap="round"/>
+<path d="M19.6294 41.5779C20.4042 40.9973 21.5634 39.8381 22.5713 39.1846C23.5737 38.5347 24.4801 38.0205 25.2578 37.5341C25.9621 37.0935 26.9384 36.9836 28.0074 36.7243C28.62 36.5952 29.2065 36.4651 29.9473 36.368C30.4317 36.335 31.1366 36.335 32.057 36.5292" stroke="white" stroke-width="6" stroke-linecap="round"/>
+</g>
+<defs>
+<clipPath id="clip0_1144_293">
+<rect width="95" height="95" fill="white"/>
+</clipPath>
+</defs>
 </svg>

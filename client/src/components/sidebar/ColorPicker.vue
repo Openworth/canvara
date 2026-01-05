@@ -337,7 +337,7 @@ onUnmounted(() => {
 }
 
 :global(.dark) .compact-swatch.selected {
-  box-shadow: 0 0 0 2px #1e1e2e, 0 0 0 3px #6366F1;
+  box-shadow: 0 0 0 2px #1e1e1e, 0 0 0 3px #6366F1;
 }
 
 .compact-swatch.transparent-swatch {
@@ -369,7 +369,7 @@ onUnmounted(() => {
 
 /* Dark mode */
 .dark .color-dropdown {
-  background: #1e1e2e;
+  background: #1e1e1e;
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 
     0 4px 24px rgba(0, 0, 0, 0.4),
@@ -416,7 +416,7 @@ onUnmounted(() => {
 
 /* Dark mode selected swatch */
 .dark .color-dropdown .color-swatch.selected {
-  box-shadow: 0 0 0 2px #1e1e2e, 0 0 0 3px #6366F1;
+  box-shadow: 0 0 0 2px #1e1e1e, 0 0 0 3px #6366F1;
 }
 
 .color-dropdown .transparent-swatch {
@@ -450,7 +450,7 @@ onUnmounted(() => {
 }
 
 .dark .color-dropdown .check-icon.dark-check {
-  color: #1e1e2e;
+  color: #1e1e1e;
 }
 
 /* Light mode divider */

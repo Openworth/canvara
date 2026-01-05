@@ -205,8 +205,7 @@ const visibleItems = computed(() =>
             <!-- Header -->
             <div class="drawer-header">
               <div class="drawer-brand">
-                <img :src="appStore.isDarkMode ? '/logo-icon.svg' : '/logo-icon-light.svg'" alt="Canvara" class="drawer-logo" />
-                <span class="drawer-title">Canvara</span>
+                <img :src="appStore.isDarkMode ? '/logo-full.svg' : '/logo-full-light.svg'" alt="Canvara" class="drawer-logo" />
               </div>
               <button class="drawer-close" @click="emit('close')">
                 <ToolIcon name="close" />
@@ -548,7 +547,6 @@ const visibleItems = computed(() =>
 }
 
 .drawer-logo {
-  width: 28px;
   height: 28px;
 }
 
