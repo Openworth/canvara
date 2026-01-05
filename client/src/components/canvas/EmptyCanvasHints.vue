@@ -82,24 +82,24 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
           <span>real-time</span>
         </div>
         <svg 
-          width="70" 
-          height="60" 
-          viewBox="0 0 70 60" 
+          width="80" 
+          height="70" 
+          viewBox="0 0 80 70" 
           fill="none"
           class="hint-arrow-curved"
         >
-          <!-- Hand-drawn curved arrow curving up towards Share button -->
+          <!-- Hand-drawn curved arrow curving up-right towards Share button -->
           <path 
-            d="M10 58 C 18 45, 28 32, 38 22 C 48 12, 52 8, 58 3"
+            d="M8 68 C 20 52, 35 38, 50 25 C 60 16, 68 10, 75 5"
             :stroke="hintColor"
             stroke-width="2"
             stroke-linecap="round"
             fill="none"
             class="arrow-line"
           />
-          <!-- Arrowhead pointing up -->
+          <!-- Arrowhead pointing up-right -->
           <path 
-            d="M50 0 L59 2 L58 12"
+            d="M68 0 L77 4 L73 14"
             :stroke="hintColor"
             stroke-width="2"
             stroke-linecap="round"
@@ -152,8 +152,8 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 /* Collaboration hint - positioned top right, pointing to Share button */
 .hint-collab {
   position: absolute;
-  right: 260px;
-  top: 115px;
+  right: 140px;
+  top: 140px;
 }
 
 .hint-text-right {
@@ -162,8 +162,8 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 
 .hint-arrow-curved {
   position: absolute;
-  top: -58px;
-  right: -50px;
+  top: -68px;
+  right: -65px;
 }
 
 /* Subtle animation for the arrows */

@@ -32,9 +32,11 @@ import {
   Keyboard,
   MoreHorizontal,
   ChevronUp,
+  ChevronDown,
   GripHorizontal,
   Folder,
   CreditCard,
+  LogIn,
   LogOut,
   Cloud,
   CloudOff,
@@ -43,6 +45,10 @@ import {
   Crown,
   Sparkles,
   Star,
+  PanelLeft,
+  ArrowUpToLine,
+  ArrowDownToLine,
+  Layers,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -83,10 +89,12 @@ const iconMap: Record<string, any> = {
   keyboard: Keyboard,
   more: MoreHorizontal,
   chevronUp: ChevronUp,
+  chevronDown: ChevronDown,
   grip: GripHorizontal,
   folder: Folder,
   folderOpen: FolderOpen,
   creditCard: CreditCard,
+  logIn: LogIn,
   logOut: LogOut,
   cloud: Cloud,
   cloudOff: CloudOff,
@@ -94,6 +102,12 @@ const iconMap: Record<string, any> = {
   crown: Crown,
   sparkles: Sparkles,
   star: Star,
+  panelLeft: PanelLeft,
+  bringToFront: ArrowUpToLine,
+  sendToBack: ArrowDownToLine,
+  bringForward: ChevronUp,
+  sendBackward: ChevronDown,
+  layers: Layers,
 }
 
 const IconComponent = computed(() => iconMap[props.name] || HelpCircle)

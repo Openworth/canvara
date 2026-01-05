@@ -204,6 +204,41 @@ const opacity = computed(() =>
         <!-- Text Options Panel -->
         <div v-if="panelMode === 'text'" class="sidebar-content">
           <TextOptions />
+          
+          <!-- Layer Controls for text elements (only when element is selected) -->
+          <div v-if="hasSelection" class="option-section" style="--section-index: 4; margin-top: 16px;">
+            <label class="option-label">Layers</label>
+            <div class="layer-buttons">
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                title="Send to back"
+              >
+                <ToolIcon name="sendToBack" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                title="Send backward"
+              >
+                <ToolIcon name="sendBackward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                title="Bring forward"
+              >
+                <ToolIcon name="bringForward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                title="Bring to front"
+              >
+                <ToolIcon name="bringToFront" class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Shape/Line Options Panel -->
@@ -283,6 +318,41 @@ const opacity = computed(() =>
               />
             </div>
           </div>
+
+          <!-- Layer Controls (only when element is selected) -->
+          <div v-if="hasSelection" class="option-section" style="--section-index: 7;">
+            <label class="option-label">Layers</label>
+            <div class="layer-buttons">
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                title="Send to back"
+              >
+                <ToolIcon name="sendToBack" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                title="Send backward"
+              >
+                <ToolIcon name="sendBackward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                title="Bring forward"
+              >
+                <ToolIcon name="bringForward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                title="Bring to front"
+              >
+                <ToolIcon name="bringToFront" class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -311,7 +381,44 @@ const opacity = computed(() =>
       <!-- Content -->
       <div class="sheet-content">
         <!-- Text Options Panel -->
-        <TextOptions v-if="panelMode === 'text'" />
+        <template v-if="panelMode === 'text'">
+          <TextOptions />
+          
+          <!-- Layer Controls for text elements (only when element is selected) -->
+          <div v-if="hasSelection" class="option-row">
+            <label class="section-label">Layers</label>
+            <div class="layer-buttons mobile">
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                title="Send to back"
+              >
+                <ToolIcon name="sendToBack" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                title="Send backward"
+              >
+                <ToolIcon name="sendBackward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                title="Bring forward"
+              >
+                <ToolIcon name="bringForward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                title="Bring to front"
+              >
+                <ToolIcon name="bringToFront" class="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </template>
 
         <!-- Shape/Line Options Panel -->
         <template v-else>
@@ -391,6 +498,41 @@ const opacity = computed(() =>
                 class="opacity-slider"
               />
               <span class="opacity-value">{{ opacity }}%</span>
+            </div>
+          </div>
+
+          <!-- Layer Controls (only when element is selected) -->
+          <div v-if="hasSelection" class="option-row">
+            <label class="section-label">Layers</label>
+            <div class="layer-buttons mobile">
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                title="Send to back"
+              >
+                <ToolIcon name="sendToBack" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                title="Send backward"
+              >
+                <ToolIcon name="sendBackward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                title="Bring forward"
+              >
+                <ToolIcon name="bringForward" class="w-4 h-4" />
+              </button>
+              <button
+                class="layer-btn"
+                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                title="Bring to front"
+              >
+                <ToolIcon name="bringToFront" class="w-4 h-4" />
+              </button>
             </div>
           </div>
         </template>
@@ -575,6 +717,52 @@ const opacity = computed(() =>
 .roughness-btn.mobile {
   padding: 14px 8px;
   font-size: 12px;
+}
+
+/* ============================================
+   LAYER BUTTONS
+   ============================================ */
+
+.layer-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.layer-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px;
+  border-radius: 8px;
+  background: var(--color-toolbar-hover);
+  color: var(--color-text-primary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.layer-btn:hover {
+  background: var(--color-toolbar-active);
+  transform: translateY(-1px);
+  color: var(--color-accent-primary);
+}
+
+.layer-btn:active {
+  transform: translateY(0);
+  background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
+  color: white;
+  box-shadow: 
+    0 4px 12px -2px rgba(99, 102, 241, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.layer-buttons.mobile {
+  gap: 4px;
+}
+
+.layer-buttons.mobile .layer-btn {
+  padding: 12px 8px;
 }
 
 /* ============================================
