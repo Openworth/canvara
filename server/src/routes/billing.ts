@@ -188,20 +188,26 @@ router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
 
         if (user) {
           let status: string
-          switch (subscription.status) {
-            case 'active':
-            case 'trialing':
-              status = 'active'
-              break
-            case 'past_due':
-              status = 'past_due'
-              break
-            case 'canceled':
-            case 'unpaid':
-              status = 'canceled'
-              break
-            default:
-              status = 'free'
+          
+          // Check if subscription is set to cancel at period end
+          if (subscription.cancel_at_period_end && subscription.status === 'active') {
+            status = 'canceled' // Will still have access until end date
+          } else {
+            switch (subscription.status) {
+              case 'active':
+              case 'trialing':
+                status = 'active'
+                break
+              case 'past_due':
+                status = 'past_due'
+                break
+              case 'canceled':
+              case 'unpaid':
+                status = 'canceled'
+                break
+              default:
+                status = 'free'
+            }
           }
 
           db.prepare(`

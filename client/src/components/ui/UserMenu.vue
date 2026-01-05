@@ -55,7 +55,10 @@ onUnmounted(() => {
     <!-- User avatar button -->
     <button
       class="user-avatar-btn"
-      :class="{ 'is-pro': authStore.isPaidUser }"
+      :class="{ 
+        'is-pro': authStore.isPaidUser && !authStore.isSubscriptionCanceled,
+        'is-canceling': authStore.isSubscriptionCanceled
+      }"
       @click="toggleDropdown"
     >
       <img
@@ -69,7 +72,10 @@ onUnmounted(() => {
       </span>
       
       <!-- Pro crown badge -->
-      <div v-if="authStore.isPaidUser" class="pro-crown-badge">
+      <div 
+        v-if="authStore.isPaidUser" 
+        :class="['pro-crown-badge', { 'is-canceling': authStore.isSubscriptionCanceled }]"
+      >
         <ToolIcon name="crown" />
       </div>
     </button>
@@ -97,9 +103,18 @@ onUnmounted(() => {
         <!-- Plan info -->
         <div class="plan-info">
           <span class="plan-label">Current plan:</span>
-          <span :class="['plan-value', authStore.isPaidUser ? 'pro' : 'free']">
+          <span :class="['plan-value', authStore.isPaidUser ? (authStore.isSubscriptionCanceled ? 'canceled' : 'pro') : 'free']">
             {{ authStore.isPaidUser ? 'Pro' : 'Free' }}
           </span>
+        </div>
+
+        <!-- Cancellation notice -->
+        <div v-if="authStore.isSubscriptionCanceled" class="cancel-notice">
+          <ToolIcon name="zap" class="cancel-icon" />
+          <div class="cancel-text">
+            <span class="cancel-title">Subscription canceled</span>
+            <span class="cancel-date">Access until {{ authStore.subscriptionEndDateFormatted }}</span>
+          </div>
         </div>
 
         <div class="menu-divider" />
@@ -178,6 +193,16 @@ onUnmounted(() => {
   box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
 }
 
+.user-avatar-btn.is-canceling {
+  border-color: #78716c;
+  box-shadow: 0 0 0 2px rgba(120, 113, 108, 0.2);
+}
+
+.user-avatar-btn.is-canceling:hover {
+  border-color: #a8a29e;
+  box-shadow: 0 0 0 3px rgba(168, 162, 158, 0.3);
+}
+
 .avatar-img {
   width: 100%;
   height: 100%;
@@ -210,6 +235,11 @@ onUnmounted(() => {
   height: 10px;
   color: white;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+.pro-crown-badge.is-canceling {
+  background: linear-gradient(135deg, #78716c 0%, #57534e 100%);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .dropdown-menu {
@@ -312,6 +342,44 @@ onUnmounted(() => {
   color: white;
   background: linear-gradient(135deg, #fbbf24, #f59e0b);
   box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.plan-value.canceled {
+  color: #a8a29e;
+  background: linear-gradient(135deg, #78716c, #57534e);
+}
+
+.cancel-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border-top: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.cancel-icon {
+  width: 18px;
+  height: 18px;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.cancel-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cancel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.cancel-date {
+  font-size: 11px;
+  color: var(--color-text-secondary);
 }
 
 .menu-divider {

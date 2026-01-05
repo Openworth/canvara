@@ -10,8 +10,23 @@ const authStore = useAuthStore()
 </script>
 
 <template>
-  <!-- Pro Badge for paid users -->
-  <div v-if="authStore.isPaidUser" class="pro-badge">
+  <!-- Canceled but still active - show expiry warning -->
+  <button 
+    v-if="authStore.isSubscriptionCanceled" 
+    class="expiring-badge"
+    @click="emit('click')"
+    v-tooltip.bottom="`Pro access until ${authStore.subscriptionEndDateFormatted}`"
+  >
+    <div class="crown-icon faded">
+      <ToolIcon name="crown" />
+    </div>
+    <span class="expiring-text">
+      {{ authStore.daysUntilExpiry === 0 ? 'Expires today' : `${authStore.daysUntilExpiry}d left` }}
+    </span>
+  </button>
+
+  <!-- Pro Badge for active paid users (not canceled) -->
+  <div v-else-if="authStore.isPaidUser" class="pro-badge">
     <div class="crown-icon">
       <ToolIcon name="crown" />
     </div>
@@ -33,6 +48,48 @@ const authStore = useAuthStore()
 </template>
 
 <style scoped>
+/* Expiring Badge - Muted warning style for canceled subscriptions */
+.expiring-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #78716c 0%, #57534e 100%);
+  border: 1px solid #a8a29e;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.expiring-badge:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.4);
+}
+
+.expiring-badge:hover .crown-icon.faded {
+  opacity: 1;
+}
+
+.expiring-badge:hover .expiring-text {
+  color: #fff;
+}
+
+.crown-icon.faded {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.expiring-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e7e5e4;
+  letter-spacing: 0.3px;
+  transition: color 0.2s ease;
+}
+
 /* Pro Badge - Gold theme with crown */
 .pro-badge {
   display: flex;

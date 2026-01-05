@@ -32,6 +32,34 @@ export const useAuthStore = defineStore('auth', () => {
       (subscriptionStatus === 'canceled' && subscriptionEndDate && subscriptionEndDate > now)
   })
 
+  // Subscription is canceled but still active until end date
+  const isSubscriptionCanceled = computed(() => {
+    if (!user.value) return false
+    const { subscriptionStatus, subscriptionEndDate } = user.value
+    const now = Math.floor(Date.now() / 1000)
+    
+    return subscriptionStatus === 'canceled' && subscriptionEndDate && subscriptionEndDate > now
+  })
+
+  // Format the subscription end date
+  const subscriptionEndDateFormatted = computed(() => {
+    if (!user.value?.subscriptionEndDate) return null
+    const date = new Date(user.value.subscriptionEndDate * 1000)
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+    })
+  })
+
+  // Days remaining until subscription ends
+  const daysUntilExpiry = computed(() => {
+    if (!user.value?.subscriptionEndDate) return null
+    const now = Math.floor(Date.now() / 1000)
+    const diff = user.value.subscriptionEndDate - now
+    return Math.max(0, Math.ceil(diff / (60 * 60 * 24)))
+  })
+
   const isAdmin = computed(() => user.value?.isAdmin || false)
 
   const displayName = computed(() => {
@@ -169,6 +197,9 @@ export const useAuthStore = defineStore('auth', () => {
     hasToken,
     isAuthenticated,
     isPaidUser,
+    isSubscriptionCanceled,
+    subscriptionEndDateFormatted,
+    daysUntilExpiry,
     isAdmin,
     displayName,
     initials,
