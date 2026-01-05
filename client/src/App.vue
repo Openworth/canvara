@@ -35,22 +35,11 @@ onMounted(async () => {
   // Mark initialization complete after a tick to let the watcher fire first
   setTimeout(() => { hasInitializedTheme = true }, 0)
 
-  // Check auth status on load
+  // Check auth status on load (if we have a token)
   await authStore.checkAuth()
 
-  // Handle OAuth callback
-  const urlParams = new URLSearchParams(window.location.search)
-  if (urlParams.get('auth') === 'success') {
-    // Clear the URL params
-    window.history.replaceState({}, document.title, window.location.pathname)
-    // Refresh user data
-    await authStore.checkAuth()
-  } else if (urlParams.get('error')) {
-    console.error('Auth error:', urlParams.get('error'))
-    window.history.replaceState({}, document.title, window.location.pathname)
-  }
-
   // Handle Stripe checkout callbacks
+  const urlParams = new URLSearchParams(window.location.search)
   if (urlParams.get('checkout') === 'success') {
     window.history.replaceState({}, document.title, window.location.pathname)
     // Refresh user data to get updated subscription status

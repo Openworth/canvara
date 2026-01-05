@@ -43,9 +43,20 @@ export function verifyToken(token: string): JwtPayload | null {
   }
 }
 
-// Middleware to authenticate user from JWT cookie
+// Helper to extract token from Authorization header or cookie
+function extractToken(req: Request): string | null {
+  // First try Authorization header (preferred)
+  const authHeader = req.headers.authorization
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.substring(7)
+  }
+  // Fallback to cookie for backwards compatibility
+  return req.cookies?.auth_token || null
+}
+
+// Middleware to authenticate user from JWT token
 export const authenticate: RequestHandler = (req, res, next) => {
-  const token = req.cookies?.auth_token
+  const token = extractToken(req)
 
   if (!token) {
     res.status(401).json({ error: 'Authentication required' })
@@ -122,7 +133,7 @@ export const requirePaidSubscription: RequestHandler = (req, res, next) => {
 
 // Optional authentication - doesn't fail if not authenticated
 export const optionalAuth: RequestHandler = (req, res, next) => {
-  const token = req.cookies?.auth_token
+  const token = extractToken(req)
 
   if (token) {
     const payload = verifyToken(token)

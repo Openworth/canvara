@@ -57,7 +57,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
     try {
       const response = await fetch(`${API_URL}/api/projects`, {
-        credentials: 'include',
+        headers: authStore.getAuthHeaders(),
       })
 
       if (!response.ok) {
@@ -82,7 +82,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
     try {
       const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
-        credentials: 'include',
+        headers: authStore.getAuthHeaders(),
       })
 
       if (!response.ok) {
@@ -125,8 +125,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
       const response = await fetch(`${API_URL}/api/projects`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
         body: JSON.stringify({
           name: name || 'Untitled',
           elements,
@@ -178,8 +177,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
       const response = await fetch(`${API_URL}/api/projects/${currentProjectId.value}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
         body: JSON.stringify({
           name: currentProjectName.value,
           elements,
@@ -222,7 +220,7 @@ export const useProjectsStore = defineStore('projects', () => {
     try {
       const response = await fetch(`${API_URL}/api/projects/${projectId}`, {
         method: 'DELETE',
-        credentials: 'include',
+        headers: authStore.getAuthHeaders(),
       })
 
       if (!response.ok) {
@@ -253,7 +251,7 @@ export const useProjectsStore = defineStore('projects', () => {
     try {
       const response = await fetch(`${API_URL}/api/projects/${projectId}/duplicate`, {
         method: 'POST',
-        credentials: 'include',
+        headers: authStore.getAuthHeaders(),
       })
 
       if (!response.ok) {

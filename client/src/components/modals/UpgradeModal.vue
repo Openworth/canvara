@@ -20,7 +20,7 @@ async function handleUpgrade() {
   try {
     const response = await fetch(`${API_URL}/api/billing/checkout`, {
       method: 'POST',
-      credentials: 'include',
+      headers: authStore.getAuthHeaders(),
     })
 
     if (!response.ok) {
@@ -49,7 +49,7 @@ async function handleManageSubscription() {
   try {
     const response = await fetch(`${API_URL}/api/billing/portal`, {
       method: 'POST',
-      credentials: 'include',
+      headers: authStore.getAuthHeaders(),
     })
 
     if (!response.ok) {

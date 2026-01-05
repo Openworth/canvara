@@ -101,16 +101,9 @@ router.get('/google/callback',
     // Generate JWT token
     const token = generateToken({ userId: user.id, email: user.email })
 
-    // Set HTTP-only cookie
-    res.cookie('auth_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    })
-
-    // Redirect to client
-    res.redirect(`${CLIENT_URL}?auth=success`)
+    // Redirect to client callback with token in URL
+    // Token is passed via URL fragment (hash) for better security - not logged in server logs
+    res.redirect(`${CLIENT_URL}/auth/callback?token=${token}`)
   }
 )
 
@@ -120,19 +113,18 @@ router.get('/me', authenticate, (req: Request, res: Response): void => {
   res.json({ user: authReq.user })
 })
 
-// Logout
+// Logout - client just needs to clear their stored token
 router.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie('auth_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  })
+  // Nothing to do server-side since tokens are stored client-side
+  // In the future, we could implement token blacklisting if needed
   res.json({ success: true })
 })
 
-// Check auth status (doesn't require auth, just returns status)
+// Check auth status - requires token in Authorization header
 router.get('/status', (req: Request, res: Response): void => {
-  const token = req.cookies?.auth_token
+  // Extract token from Authorization header
+  const authHeader = req.headers.authorization
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
   
   if (!token) {
     res.json({ authenticated: false })

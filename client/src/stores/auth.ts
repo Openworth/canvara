@@ -15,11 +15,13 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
+  const token = ref<string | null>(localStorage.getItem('auth_token'))
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
   // Computed
-  const isAuthenticated = computed(() => !!user.value)
+  const hasToken = computed(() => !!token.value)
+  const isAuthenticated = computed(() => !!token.value && !!user.value)
   
   const isPaidUser = computed(() => {
     if (!user.value) return false
@@ -47,14 +49,31 @@ export const useAuthStore = defineStore('auth', () => {
       .slice(0, 2)
   })
 
+  // Get auth headers for API calls
+  function getAuthHeaders(): Record<string, string> {
+    if (!token.value) return {}
+    return { 'Authorization': `Bearer ${token.value}` }
+  }
+
+  // Set token from OAuth callback
+  function setToken(newToken: string) {
+    token.value = newToken
+    localStorage.setItem('auth_token', newToken)
+  }
+
   // Actions
   async function checkAuth(): Promise<boolean> {
+    if (!token.value) {
+      user.value = null
+      return false
+    }
+
     isLoading.value = true
     error.value = null
 
     try {
       const response = await fetch(`${API_URL}/api/auth/status`, {
-        credentials: 'include',
+        headers: getAuthHeaders(),
       })
 
       if (!response.ok) {
@@ -75,7 +94,8 @@ export const useAuthStore = defineStore('auth', () => {
         }
         return true
       } else {
-        user.value = null
+        // Token is invalid, clear it
+        logout()
         return false
       }
     } catch (e) {
@@ -97,24 +117,28 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
 
     try {
-      await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      if (token.value) {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        })
+      }
     } catch (e) {
       console.error('Logout failed:', e)
     } finally {
       user.value = null
+      token.value = null
+      localStorage.removeItem('auth_token')
       isLoading.value = false
     }
   }
 
   async function refreshUser(): Promise<void> {
-    if (!isAuthenticated.value) return
+    if (!token.value) return
 
     try {
       const response = await fetch(`${API_URL}/api/auth/me`, {
-        credentials: 'include',
+        headers: getAuthHeaders(),
       })
 
       if (response.ok) {
@@ -137,10 +161,12 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     // State
     user,
+    token,
     isLoading,
     error,
 
     // Computed
+    hasToken,
     isAuthenticated,
     isPaidUser,
     isAdmin,
@@ -148,6 +174,8 @@ export const useAuthStore = defineStore('auth', () => {
     initials,
 
     // Actions
+    getAuthHeaders,
+    setToken,
     checkAuth,
     login,
     logout,
