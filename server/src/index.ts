@@ -20,8 +20,31 @@ getDb()
 
 // CORS configuration for production
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+
+// Support multiple origins (www and non-www)
+const allowedOrigins = [
+  CLIENT_URL,
+  // Add www variant if not localhost
+  CLIENT_URL.includes('localhost') ? null : CLIENT_URL.replace('https://', 'https://www.'),
+  // Add non-www variant if it has www
+  CLIENT_URL.startsWith('https://www.') ? CLIENT_URL.replace('https://www.', 'https://') : null,
+].filter(Boolean) as string[]
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || CLIENT_URL,
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) {
+      callback(null, true)
+      return
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      console.log(`CORS blocked origin: ${origin}, allowed: ${allowedOrigins.join(', ')}`)
+      callback(null, false)
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
 }
