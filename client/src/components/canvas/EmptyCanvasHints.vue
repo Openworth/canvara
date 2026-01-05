@@ -52,7 +52,7 @@ const features = [
 
         <!-- Subtitle -->
         <p class="subtitle">
-          A free, open-source collaborative whiteboard for teams and individuals
+          The collaborative whiteboard for teams and creatives — free to start
         </p>
 
         <!-- Feature Pills -->
