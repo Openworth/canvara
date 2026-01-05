@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useAuthStore } from '../../stores/auth'
-import ToolIcon from '../toolbar/ToolIcon.vue'
 
 const authStore = useAuthStore()
 </script>

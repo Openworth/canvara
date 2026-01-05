@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useProjectsStore, type ProjectListItem } from '../../stores/projects'
-import { useAuthStore } from '../../stores/auth'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 
@@ -10,7 +9,6 @@ const emit = defineEmits<{
 }>()
 
 const projectsStore = useProjectsStore()
-const authStore = useAuthStore()
 
 const showDeleteConfirm = ref(false)
 const projectToDelete = ref<ProjectListItem | null>(null)
