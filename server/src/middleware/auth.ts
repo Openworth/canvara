@@ -1,21 +1,32 @@
-import { Request, Response, NextFunction } from 'express'
+import { Request, Response, NextFunction, RequestHandler } from 'express'
 import jwt from 'jsonwebtoken'
 import { getDb } from '../db/index.js'
+
+// Hardcoded admin accounts with permanent pro access
+const ADMIN_EMAILS = ['yurlovandrew@gmail.com']
 
 export interface JwtPayload {
   userId: string
   email: string
 }
 
+export interface UserData {
+  id: string
+  email: string
+  name: string | null
+  avatarUrl: string | null
+  subscriptionStatus: string
+  subscriptionEndDate: number | null
+  isAdmin: boolean
+}
+
 export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string
-    email: string
-    name: string | null
-    avatarUrl: string | null
-    subscriptionStatus: string
-    subscriptionEndDate: number | null
-  }
+  user?: UserData
+}
+
+// Helper to check if email is an admin
+export function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.toLowerCase())
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production'
@@ -33,16 +44,18 @@ export function verifyToken(token: string): JwtPayload | null {
 }
 
 // Middleware to authenticate user from JWT cookie
-export function authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export const authenticate: RequestHandler = (req, res, next) => {
   const token = req.cookies?.auth_token
 
   if (!token) {
-    return res.status(401).json({ error: 'Authentication required' })
+    res.status(401).json({ error: 'Authentication required' })
+    return
   }
 
   const payload = verifyToken(token)
   if (!payload) {
-    return res.status(401).json({ error: 'Invalid or expired token' })
+    res.status(401).json({ error: 'Invalid or expired token' })
+    return
   }
 
   // Get user from database
@@ -60,28 +73,36 @@ export function authenticate(req: AuthenticatedRequest, res: Response, next: Nex
   } | undefined
 
   if (!user) {
-    return res.status(401).json({ error: 'User not found' })
+    res.status(401).json({ error: 'User not found' })
+    return
   }
 
-  req.user = {
+  const isAdmin = isAdminEmail(user.email)
+
+  ;(req as AuthenticatedRequest).user = {
     id: user.id,
     email: user.email,
     name: user.name,
     avatarUrl: user.avatar_url,
-    subscriptionStatus: user.subscription_status,
+    // Admins always have active subscription
+    subscriptionStatus: isAdmin ? 'active' : user.subscription_status,
     subscriptionEndDate: user.subscription_end_date,
+    isAdmin,
   }
 
   next()
 }
 
 // Middleware to require paid subscription
-export function requirePaidSubscription(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' })
+export const requirePaidSubscription: RequestHandler = (req, res, next) => {
+  const authReq = req as AuthenticatedRequest
+  
+  if (!authReq.user) {
+    res.status(401).json({ error: 'Authentication required' })
+    return
   }
 
-  const { subscriptionStatus, subscriptionEndDate } = req.user
+  const { subscriptionStatus, subscriptionEndDate } = authReq.user
   const now = Math.floor(Date.now() / 1000)
 
   // Check if subscription is active
@@ -89,17 +110,18 @@ export function requirePaidSubscription(req: AuthenticatedRequest, res: Response
     (subscriptionStatus === 'canceled' && subscriptionEndDate && subscriptionEndDate > now)
 
   if (!isActive) {
-    return res.status(403).json({ 
+    res.status(403).json({ 
       error: 'Paid subscription required',
       subscriptionStatus,
     })
+    return
   }
 
   next()
 }
 
 // Optional authentication - doesn't fail if not authenticated
-export function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+export const optionalAuth: RequestHandler = (req, res, next) => {
   const token = req.cookies?.auth_token
 
   if (token) {
@@ -119,13 +141,16 @@ export function optionalAuth(req: AuthenticatedRequest, res: Response, next: Nex
       } | undefined
 
       if (user) {
-        req.user = {
+        const isAdmin = isAdminEmail(user.email)
+        ;(req as AuthenticatedRequest).user = {
           id: user.id,
           email: user.email,
           name: user.name,
           avatarUrl: user.avatar_url,
-          subscriptionStatus: user.subscription_status,
+          // Admins always have active subscription
+          subscriptionStatus: isAdmin ? 'active' : user.subscription_status,
           subscriptionEndDate: user.subscription_end_date,
+          isAdmin,
         }
       }
     }
@@ -133,4 +158,3 @@ export function optionalAuth(req: AuthenticatedRequest, res: Response, next: Nex
 
   next()
 }
-

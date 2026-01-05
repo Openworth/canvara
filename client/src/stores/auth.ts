@@ -8,6 +8,7 @@ export interface User {
   avatarUrl: string | null
   subscriptionStatus: 'free' | 'active' | 'canceled' | 'past_due'
   subscriptionEndDate: number | null
+  isAdmin: boolean
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -28,6 +29,8 @@ export const useAuthStore = defineStore('auth', () => {
     return subscriptionStatus === 'active' || 
       (subscriptionStatus === 'canceled' && subscriptionEndDate && subscriptionEndDate > now)
   })
+
+  const isAdmin = computed(() => user.value?.isAdmin || false)
 
   const displayName = computed(() => {
     if (!user.value) return null
@@ -68,6 +71,7 @@ export const useAuthStore = defineStore('auth', () => {
           avatarUrl: data.user.avatar_url,
           subscriptionStatus: data.user.subscription_status,
           subscriptionEndDate: data.user.subscription_end_date,
+          isAdmin: data.user.is_admin || false,
         }
         return true
       } else {
@@ -122,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
           avatarUrl: data.user.avatarUrl,
           subscriptionStatus: data.user.subscriptionStatus,
           subscriptionEndDate: data.user.subscriptionEndDate,
+          isAdmin: data.user.isAdmin || false,
         }
       }
     } catch (e) {
@@ -138,6 +143,7 @@ export const useAuthStore = defineStore('auth', () => {
     // Computed
     isAuthenticated,
     isPaidUser,
+    isAdmin,
     displayName,
     initials,
 

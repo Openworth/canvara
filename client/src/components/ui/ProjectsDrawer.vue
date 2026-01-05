@@ -14,6 +14,10 @@ const authStore = useAuthStore()
 
 const showDeleteConfirm = ref(false)
 const projectToDelete = ref<ProjectListItem | null>(null)
+const editingProjectId = ref<string | null>(null)
+const editingName = ref('')
+const editingCurrentName = ref(false)
+const currentNameInput = ref('')
 
 onMounted(() => {
   projectsStore.fetchProjects()
@@ -66,6 +70,66 @@ async function handleDeleteConfirm() {
 
 async function handleDuplicate(project: ProjectListItem) {
   await projectsStore.duplicateProject(project.id)
+}
+
+function startRenaming(project: ProjectListItem) {
+  editingProjectId.value = project.id
+  editingName.value = project.name
+}
+
+async function saveRename(project: ProjectListItem) {
+  if (editingName.value.trim() && editingName.value !== project.name) {
+    // Update locally first
+    const index = projectsStore.projects.findIndex(p => p.id === project.id)
+    if (index !== -1) {
+      projectsStore.projects[index].name = editingName.value.trim()
+    }
+    
+    // If this is the current project, update the name and save
+    if (project.id === projectsStore.currentProjectId) {
+      projectsStore.renameProject(editingName.value.trim())
+    } else {
+      // For non-current projects, need to update on server directly
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+      await fetch(`${API_URL}/api/projects/${project.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: editingName.value.trim() }),
+      })
+    }
+  }
+  editingProjectId.value = null
+  editingName.value = ''
+}
+
+function cancelRename() {
+  editingProjectId.value = null
+  editingName.value = ''
+}
+
+function startEditingCurrentName() {
+  editingCurrentName.value = true
+  currentNameInput.value = projectsStore.currentProjectName
+}
+
+function saveCurrentName() {
+  if (currentNameInput.value.trim() && currentNameInput.value !== projectsStore.currentProjectName) {
+    projectsStore.renameProject(currentNameInput.value.trim())
+    
+    // Also update in the list
+    const index = projectsStore.projects.findIndex(p => p.id === projectsStore.currentProjectId)
+    if (index !== -1) {
+      projectsStore.projects[index].name = currentNameInput.value.trim()
+    }
+  }
+  editingCurrentName.value = false
+  currentNameInput.value = ''
+}
+
+function cancelEditingCurrentName() {
+  editingCurrentName.value = false
+  currentNameInput.value = ''
 }
 </script>
 
@@ -124,13 +188,34 @@ async function handleDuplicate(project: ProjectListItem) {
             </div>
 
             <!-- Info -->
-            <div class="project-info">
-              <span class="project-name">{{ project.name }}</span>
+            <div class="project-info" @click.stop>
+              <template v-if="editingProjectId === project.id">
+                <input
+                  v-model="editingName"
+                  class="project-name-input"
+                  type="text"
+                  @keydown.enter="saveRename(project)"
+                  @keydown.escape="cancelRename"
+                  @blur="saveRename(project)"
+                  ref="renameInput"
+                  autofocus
+                />
+              </template>
+              <template v-else>
+                <span class="project-name" @click="handleLoadProject(project)">{{ project.name }}</span>
+              </template>
               <span class="project-date">{{ formatDate(project.updatedAt) }}</span>
             </div>
 
             <!-- Actions -->
             <div class="project-actions" @click.stop>
+              <button 
+                class="project-action-btn" 
+                v-tooltip.bottom="'Rename'"
+                @click="startRenaming(project)"
+              >
+                <ToolIcon name="pencil" />
+              </button>
               <button 
                 class="project-action-btn" 
                 v-tooltip.bottom="'Duplicate'"
@@ -154,7 +239,25 @@ async function handleDuplicate(project: ProjectListItem) {
       <div v-if="projectsStore.isCloudProject" class="current-project-bar">
         <ToolIcon name="cloud" class="cloud-icon" />
         <span class="current-label">Current:</span>
-        <span class="current-name">{{ projectsStore.currentProjectName }}</span>
+        <template v-if="editingCurrentName">
+          <input
+            v-model="currentNameInput"
+            class="current-name-input"
+            type="text"
+            @keydown.enter="saveCurrentName"
+            @keydown.escape="cancelEditingCurrentName"
+            @blur="saveCurrentName"
+            autofocus
+          />
+        </template>
+        <template v-else>
+          <span class="current-name" @click="startEditingCurrentName" title="Click to rename">
+            {{ projectsStore.currentProjectName }}
+          </span>
+          <button class="edit-name-btn" @click="startEditingCurrentName" v-tooltip.top="'Rename'">
+            <ToolIcon name="pencil" />
+          </button>
+        </template>
         <span v-if="projectsStore.isSaving" class="save-status saving">Saving...</span>
         <span v-else-if="projectsStore.lastSavedAt" class="save-status saved">
           Saved {{ formatDate(projectsStore.lastSavedAt) }}
@@ -396,6 +499,19 @@ async function handleDuplicate(project: ProjectListItem) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.project-name-input {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-toolbar-bg-solid);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  width: 100%;
+  outline: none;
 }
 
 .project-date {
@@ -460,10 +576,50 @@ async function handleDuplicate(project: ProjectListItem) {
 .current-name {
   font-weight: 500;
   color: var(--color-text-primary);
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.current-name:hover {
+  background: var(--color-toolbar-bg-solid);
+}
+
+.current-name-input {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: var(--color-toolbar-bg-solid);
+  border: 1px solid var(--color-accent-primary);
+  border-radius: 4px;
+  padding: 2px 8px;
+  flex: 1;
+  outline: none;
+  min-width: 0;
+}
+
+.edit-name-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.edit-name-btn:hover {
+  background: var(--color-toolbar-bg-solid);
+  color: var(--color-text-primary);
 }
 
 .save-status {

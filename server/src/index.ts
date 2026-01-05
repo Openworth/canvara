@@ -35,7 +35,8 @@ app.use('/api/billing/webhook', express.raw({ type: 'application/json' }))
 
 // JSON body for other routes
 app.use(express.json({ limit: '50mb' })) // Increased for project data
-app.use(passport.initialize())
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use(passport.initialize() as any)
 
 // Health check
 app.get('/api/health', (req, res) => {

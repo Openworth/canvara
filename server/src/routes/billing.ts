@@ -3,6 +3,8 @@ import Stripe from 'stripe'
 import { getDb } from '../db/index.js'
 import { authenticate, type AuthenticatedRequest } from '../middleware/auth.js'
 
+// Stripe types
+
 const router = Router()
 
 // Initialize Stripe
@@ -15,19 +17,21 @@ let stripe: Stripe | null = null
 
 if (STRIPE_SECRET_KEY) {
   stripe = new Stripe(STRIPE_SECRET_KEY, {
-    apiVersion: '2024-11-20.acacia',
+    apiVersion: '2025-02-24.acacia',
   })
 } else {
   console.warn('⚠️  Stripe not configured. Set STRIPE_SECRET_KEY environment variable.')
 }
 
 // Create checkout session for subscription
-router.post('/checkout', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/checkout', authenticate, async (req: Request, res: Response): Promise<void> => {
   if (!stripe || !STRIPE_PRICE_ID) {
-    return res.status(503).json({ error: 'Stripe not configured' })
+    res.status(503).json({ error: 'Stripe not configured' })
+    return
   }
 
-  const user = req.user!
+  const authReq = req as AuthenticatedRequest
+  const user = authReq.user!
   const db = getDb()
 
   try {
@@ -82,12 +86,14 @@ router.post('/checkout', authenticate, async (req: AuthenticatedRequest, res: Re
 })
 
 // Get customer portal URL
-router.post('/portal', authenticate, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/portal', authenticate, async (req: Request, res: Response): Promise<void> => {
   if (!stripe) {
-    return res.status(503).json({ error: 'Stripe not configured' })
+    res.status(503).json({ error: 'Stripe not configured' })
+    return
   }
 
-  const user = req.user!
+  const authReq = req as AuthenticatedRequest
+  const user = authReq.user!
   const db = getDb()
 
   try {
@@ -97,7 +103,8 @@ router.post('/portal', authenticate, async (req: AuthenticatedRequest, res: Resp
     ).get(user.id) as { stripe_customer_id: string | null } | undefined
 
     if (!userData?.stripe_customer_id) {
-      return res.status(400).json({ error: 'No active subscription' })
+      res.status(400).json({ error: 'No active subscription' })
+      return
     }
 
     // Create portal session
@@ -114,9 +121,10 @@ router.post('/portal', authenticate, async (req: AuthenticatedRequest, res: Resp
 })
 
 // Stripe webhook handler
-router.post('/webhook', async (req: Request, res: Response) => {
+router.post('/webhook', async (req: Request, res: Response): Promise<void> => {
   if (!stripe) {
-    return res.status(503).json({ error: 'Stripe not configured' })
+    res.status(503).json({ error: 'Stripe not configured' })
+    return
   }
 
   const sig = req.headers['stripe-signature'] as string
@@ -137,7 +145,8 @@ router.post('/webhook', async (req: Request, res: Response) => {
     }
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
-    return res.status(400).json({ error: 'Webhook signature verification failed' })
+    res.status(400).json({ error: 'Webhook signature verification failed' })
+    return
   }
 
   const db = getDb()
@@ -265,8 +274,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
 })
 
 // Get subscription status
-router.get('/status', authenticate, (req: AuthenticatedRequest, res: Response) => {
-  const user = req.user!
+router.get('/status', authenticate, (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
+  const user = authReq.user!
 
   const now = Math.floor(Date.now() / 1000)
   const isActive = user.subscriptionStatus === 'active' ||

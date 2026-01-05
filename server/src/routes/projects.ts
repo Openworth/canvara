@@ -1,4 +1,4 @@
-import { Router, Response } from 'express'
+import { Router, Request, Response } from 'express'
 import { nanoid } from 'nanoid'
 import { getDb } from '../db/index.js'
 import { authenticate, requirePaidSubscription, type AuthenticatedRequest } from '../middleware/auth.js'
@@ -21,9 +21,10 @@ router.use(authenticate)
 router.use(requirePaidSubscription)
 
 // List all projects for the user
-router.get('/', (req: AuthenticatedRequest, res: Response) => {
+router.get('/', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
 
   const projects = db.prepare(`
     SELECT id, name, thumbnail, created_at, updated_at
@@ -44,9 +45,10 @@ router.get('/', (req: AuthenticatedRequest, res: Response) => {
 })
 
 // Get a single project
-router.get('/:id', (req: AuthenticatedRequest, res: Response) => {
+router.get('/:id', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
   const projectId = req.params.id
 
   const project = db.prepare(`
@@ -54,7 +56,8 @@ router.get('/:id', (req: AuthenticatedRequest, res: Response) => {
   `).get(projectId, userId) as Project | undefined
 
   if (!project) {
-    return res.status(404).json({ error: 'Project not found' })
+    res.status(404).json({ error: 'Project not found' })
+    return
   }
 
   res.json({
@@ -71,9 +74,10 @@ router.get('/:id', (req: AuthenticatedRequest, res: Response) => {
 })
 
 // Create a new project
-router.post('/', (req: AuthenticatedRequest, res: Response) => {
+router.post('/', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
   const { name, elements, appState, thumbnail } = req.body
 
   const projectId = nanoid()
@@ -107,9 +111,10 @@ router.post('/', (req: AuthenticatedRequest, res: Response) => {
 })
 
 // Update a project
-router.put('/:id', (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
   const projectId = req.params.id
   const { name, elements, appState, thumbnail } = req.body
 
@@ -119,7 +124,8 @@ router.put('/:id', (req: AuthenticatedRequest, res: Response) => {
   `).get(projectId, userId)
 
   if (!existing) {
-    return res.status(404).json({ error: 'Project not found' })
+    res.status(404).json({ error: 'Project not found' })
+    return
   }
 
   const now = Math.floor(Date.now() / 1000)
@@ -170,9 +176,10 @@ router.put('/:id', (req: AuthenticatedRequest, res: Response) => {
 })
 
 // Delete a project
-router.delete('/:id', (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:id', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
   const projectId = req.params.id
 
   const result = db.prepare(`
@@ -180,16 +187,18 @@ router.delete('/:id', (req: AuthenticatedRequest, res: Response) => {
   `).run(projectId, userId)
 
   if (result.changes === 0) {
-    return res.status(404).json({ error: 'Project not found' })
+    res.status(404).json({ error: 'Project not found' })
+    return
   }
 
   res.status(204).send()
 })
 
 // Duplicate a project
-router.post('/:id/duplicate', (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/duplicate', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
   const db = getDb()
-  const userId = req.user!.id
+  const userId = authReq.user!.id
   const sourceProjectId = req.params.id
 
   // Get source project
@@ -198,7 +207,8 @@ router.post('/:id/duplicate', (req: AuthenticatedRequest, res: Response) => {
   `).get(sourceProjectId, userId) as Project | undefined
 
   if (!source) {
-    return res.status(404).json({ error: 'Project not found' })
+    res.status(404).json({ error: 'Project not found' })
+    return
   }
 
   const newId = nanoid()
