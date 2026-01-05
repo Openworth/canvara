@@ -444,7 +444,7 @@ const opacity = computed(() =>
     0 4px 16px -4px rgba(0, 0, 0, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     inset 0 -1px 0 rgba(0, 0, 0, 0.02);
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
 }
@@ -496,7 +496,7 @@ const opacity = computed(() =>
 
 .sidebar-content {
   padding: 12px 16px 16px;
-  overflow-y: auto;
+  overflow: visible;
   flex: 1;
 }
 
@@ -653,7 +653,7 @@ const opacity = computed(() =>
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   animation: sheetSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   max-height: 55vh;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
@@ -750,7 +750,7 @@ const opacity = computed(() =>
   padding: 0 12px 12px;
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   flex: 1;
-  overflow-y: auto;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 10px;

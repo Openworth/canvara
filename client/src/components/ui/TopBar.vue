@@ -3,21 +3,31 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { useAppStore } from '../../stores/app'
 import { useCanvasStore } from '../../stores/canvas'
+import { useAuthStore } from '../../stores/auth'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ShareModal from '../modals/ShareModal.vue'
 import ExportModal from '../modals/ExportModal.vue'
 import KeyboardShortcutsModal from '../modals/KeyboardShortcutsModal.vue'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import MenuDropdown from './MenuDropdown.vue'
+import LoginButton from './LoginButton.vue'
+import UserMenu from './UserMenu.vue'
+import ProjectsDrawer from './ProjectsDrawer.vue'
+import UpgradeModal from '../modals/UpgradeModal.vue'
+import CloudSyncIndicator from './CloudSyncIndicator.vue'
+import UpgradeBadge from './UpgradeBadge.vue'
 
 const collaborationStore = useCollaborationStore()
 const appStore = useAppStore()
 const canvasStore = useCanvasStore()
+const authStore = useAuthStore()
 
 const showMenu = ref(false)
 const showShareModal = ref(false)
 const showKeyboardShortcutsModal = ref(false)
 const showClearCanvasModal = ref(false)
+const showProjectsDrawer = ref(false)
+const showUpgradeModal = ref(false)
 
 function handleClearCanvasConfirm() {
   canvasStore.clearCanvas()
@@ -136,6 +146,9 @@ onUnmounted(() => {
           </span>
         </div>
 
+        <!-- Cloud sync indicator -->
+        <CloudSyncIndicator />
+
         <!-- Keyboard shortcuts button -->
         <button
           class="topbar-ghost-btn"
@@ -166,6 +179,20 @@ onUnmounted(() => {
         <ToolIcon name="share" class="w-3.5 h-3.5" />
         <span class="text-xs font-semibold">Share</span>
       </button>
+
+      <!-- Auth section -->
+      <div class="auth-section">
+        <template v-if="!authStore.isAuthenticated">
+          <LoginButton />
+        </template>
+        <template v-else>
+          <UpgradeBadge @click="showUpgradeModal = true" />
+          <UserMenu 
+            @openProjects="showProjectsDrawer = true"
+            @openUpgrade="showUpgradeModal = true"
+          />
+        </template>
+      </div>
     </div>
   </div>
 
@@ -262,6 +289,16 @@ onUnmounted(() => {
     :danger="true"
     @confirm="handleClearCanvasConfirm"
     @cancel="showClearCanvasModal = false"
+  />
+
+  <ProjectsDrawer
+    v-if="showProjectsDrawer"
+    @close="showProjectsDrawer = false"
+  />
+
+  <UpgradeModal
+    v-if="showUpgradeModal"
+    @close="showUpgradeModal = false"
   />
 </template>
 
@@ -514,6 +551,16 @@ onUnmounted(() => {
   box-shadow: 
     0 4px 16px -2px rgba(59, 130, 246, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Auth section */
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-toolbar-border);
 }
 
 /* TopBar entrance animation */

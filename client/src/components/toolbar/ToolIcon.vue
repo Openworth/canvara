@@ -33,6 +33,16 @@ import {
   MoreHorizontal,
   ChevronUp,
   GripHorizontal,
+  Folder,
+  CreditCard,
+  LogOut,
+  Cloud,
+  CloudOff,
+  Save,
+  FolderOpen,
+  Crown,
+  Sparkles,
+  Star,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -74,6 +84,16 @@ const iconMap: Record<string, any> = {
   more: MoreHorizontal,
   chevronUp: ChevronUp,
   grip: GripHorizontal,
+  folder: Folder,
+  folderOpen: FolderOpen,
+  creditCard: CreditCard,
+  logOut: LogOut,
+  cloud: Cloud,
+  cloudOff: CloudOff,
+  save: Save,
+  crown: Crown,
+  sparkles: Sparkles,
+  star: Star,
 }
 
 const IconComponent = computed(() => iconMap[props.name] || HelpCircle)

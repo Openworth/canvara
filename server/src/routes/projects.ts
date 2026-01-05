@@ -1,0 +1,236 @@
+import { Router, Response } from 'express'
+import { nanoid } from 'nanoid'
+import { getDb } from '../db/index.js'
+import { authenticate, requirePaidSubscription, type AuthenticatedRequest } from '../middleware/auth.js'
+
+const router = Router()
+
+interface Project {
+  id: string
+  user_id: string
+  name: string
+  elements: string
+  app_state: string | null
+  thumbnail: string | null
+  created_at: number
+  updated_at: number
+}
+
+// All project routes require authentication and paid subscription
+router.use(authenticate)
+router.use(requirePaidSubscription)
+
+// List all projects for the user
+router.get('/', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+
+  const projects = db.prepare(`
+    SELECT id, name, thumbnail, created_at, updated_at
+    FROM projects
+    WHERE user_id = ?
+    ORDER BY updated_at DESC
+  `).all(userId) as Pick<Project, 'id' | 'name' | 'thumbnail' | 'created_at' | 'updated_at'>[]
+
+  res.json({ 
+    projects: projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      thumbnail: p.thumbnail,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }))
+  })
+})
+
+// Get a single project
+router.get('/:id', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+  const projectId = req.params.id
+
+  const project = db.prepare(`
+    SELECT * FROM projects WHERE id = ? AND user_id = ?
+  `).get(projectId, userId) as Project | undefined
+
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' })
+  }
+
+  res.json({
+    project: {
+      id: project.id,
+      name: project.name,
+      elements: JSON.parse(project.elements),
+      appState: project.app_state ? JSON.parse(project.app_state) : null,
+      thumbnail: project.thumbnail,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+    }
+  })
+})
+
+// Create a new project
+router.post('/', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+  const { name, elements, appState, thumbnail } = req.body
+
+  const projectId = nanoid()
+  const now = Math.floor(Date.now() / 1000)
+
+  db.prepare(`
+    INSERT INTO projects (id, user_id, name, elements, app_state, thumbnail, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    projectId,
+    userId,
+    name || 'Untitled',
+    JSON.stringify(elements || []),
+    appState ? JSON.stringify(appState) : null,
+    thumbnail || null,
+    now,
+    now
+  )
+
+  res.status(201).json({
+    project: {
+      id: projectId,
+      name: name || 'Untitled',
+      elements: elements || [],
+      appState: appState || null,
+      thumbnail: thumbnail || null,
+      createdAt: now,
+      updatedAt: now,
+    }
+  })
+})
+
+// Update a project
+router.put('/:id', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+  const projectId = req.params.id
+  const { name, elements, appState, thumbnail } = req.body
+
+  // Check if project exists and belongs to user
+  const existing = db.prepare(`
+    SELECT id FROM projects WHERE id = ? AND user_id = ?
+  `).get(projectId, userId)
+
+  if (!existing) {
+    return res.status(404).json({ error: 'Project not found' })
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+
+  // Build update query dynamically based on provided fields
+  const updates: string[] = ['updated_at = ?']
+  const values: (string | number | null)[] = [now]
+
+  if (name !== undefined) {
+    updates.push('name = ?')
+    values.push(name)
+  }
+  if (elements !== undefined) {
+    updates.push('elements = ?')
+    values.push(JSON.stringify(elements))
+  }
+  if (appState !== undefined) {
+    updates.push('app_state = ?')
+    values.push(appState ? JSON.stringify(appState) : null)
+  }
+  if (thumbnail !== undefined) {
+    updates.push('thumbnail = ?')
+    values.push(thumbnail)
+  }
+
+  values.push(projectId, userId)
+
+  db.prepare(`
+    UPDATE projects SET ${updates.join(', ')} WHERE id = ? AND user_id = ?
+  `).run(...values)
+
+  // Fetch updated project
+  const project = db.prepare(`
+    SELECT * FROM projects WHERE id = ?
+  `).get(projectId) as Project
+
+  res.json({
+    project: {
+      id: project.id,
+      name: project.name,
+      elements: JSON.parse(project.elements),
+      appState: project.app_state ? JSON.parse(project.app_state) : null,
+      thumbnail: project.thumbnail,
+      createdAt: project.created_at,
+      updatedAt: project.updated_at,
+    }
+  })
+})
+
+// Delete a project
+router.delete('/:id', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+  const projectId = req.params.id
+
+  const result = db.prepare(`
+    DELETE FROM projects WHERE id = ? AND user_id = ?
+  `).run(projectId, userId)
+
+  if (result.changes === 0) {
+    return res.status(404).json({ error: 'Project not found' })
+  }
+
+  res.status(204).send()
+})
+
+// Duplicate a project
+router.post('/:id/duplicate', (req: AuthenticatedRequest, res: Response) => {
+  const db = getDb()
+  const userId = req.user!.id
+  const sourceProjectId = req.params.id
+
+  // Get source project
+  const source = db.prepare(`
+    SELECT * FROM projects WHERE id = ? AND user_id = ?
+  `).get(sourceProjectId, userId) as Project | undefined
+
+  if (!source) {
+    return res.status(404).json({ error: 'Project not found' })
+  }
+
+  const newId = nanoid()
+  const now = Math.floor(Date.now() / 1000)
+  const newName = `${source.name} (copy)`
+
+  db.prepare(`
+    INSERT INTO projects (id, user_id, name, elements, app_state, thumbnail, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    newId,
+    userId,
+    newName,
+    source.elements,
+    source.app_state,
+    source.thumbnail,
+    now,
+    now
+  )
+
+  res.status(201).json({
+    project: {
+      id: newId,
+      name: newName,
+      elements: JSON.parse(source.elements),
+      appState: source.app_state ? JSON.parse(source.app_state) : null,
+      thumbnail: source.thumbnail,
+      createdAt: now,
+      updatedAt: now,
+    }
+  })
+})
+
+export { router as projectRoutes }
+

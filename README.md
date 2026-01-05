@@ -20,8 +20,17 @@ A full-featured Excalidraw clone built with Vue 3 and Node.js, featuring real-ti
 ## Tech Stack
 
 - **Frontend**: Vue 3, TypeScript, Pinia, Tailwind CSS v4, Vite
-- **Backend**: Node.js, Express, WebSocket (ws)
+- **Backend**: Node.js, Express, WebSocket (ws), SQLite
 - **Graphics**: HTML5 Canvas, rough.js
+- **Auth**: Google OAuth 2.0, JWT
+- **Payments**: Stripe
+
+## Freemium Model
+
+Canvara offers a freemium model similar to Excalidraw:
+
+- **Free tier**: Projects stored locally in browser storage
+- **Pro tier ($5/month)**: Cloud storage for projects, accessible from any device
 
 ## Getting Started
 
@@ -49,7 +58,36 @@ cd ../server
 npm install
 ```
 
-3. Start development servers:
+3. Configure environment variables:
+
+**Server (`server/.env`):**
+```bash
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+SERVER_URL=http://localhost:3001
+CLIENT_URL=http://localhost:5173
+CORS_ORIGIN=http://localhost:5173
+
+# Google OAuth (https://console.cloud.google.com/apis/credentials)
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret
+
+# Stripe (https://dashboard.stripe.com/apikeys)
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_PRICE_ID=price_xxx
+
+# JWT Secret
+JWT_SECRET=your-secure-random-string
+```
+
+**Client (`client/.env`):**
+```bash
+VITE_API_URL=http://localhost:3001
+```
+
+4. Start development servers:
 
 ```bash
 # Terminal 1 - Start the backend server
@@ -61,7 +99,7 @@ cd client
 npm run dev
 ```
 
-4. Open http://localhost:5173 in your browser
+5. Open http://localhost:5173 in your browser
 
 ## Keyboard Shortcuts
 
@@ -113,6 +151,39 @@ npm run dev
 3. Share the generated link with collaborators
 4. Everyone with the link can see and edit in real-time
 
+## Deployment
+
+### Server (Fly.io)
+
+1. Install the Fly CLI: https://fly.io/docs/hands-on/install-flyctl/
+
+2. Create a persistent volume for SQLite:
+```bash
+cd server
+fly volumes create canvara_data --size 1 --region iad
+```
+
+3. Set secrets:
+```bash
+fly secrets set GOOGLE_CLIENT_ID=xxx
+fly secrets set GOOGLE_CLIENT_SECRET=xxx
+fly secrets set STRIPE_SECRET_KEY=sk_xxx
+fly secrets set STRIPE_WEBHOOK_SECRET=whsec_xxx
+fly secrets set STRIPE_PRICE_ID=price_xxx
+fly secrets set JWT_SECRET=xxx
+fly secrets set CLIENT_URL=https://your-frontend-url.com
+```
+
+4. Deploy:
+```bash
+fly deploy
+```
+
+### Client (Vercel)
+
+1. Set environment variable `VITE_API_URL` to your Fly.io server URL
+2. Deploy via Vercel dashboard or CLI
+
 ## Project Structure
 
 ```
@@ -128,6 +199,8 @@ canvara/
 │   └── ...
 ├── server/                 # Node.js Backend
 │   └── src/
+│       ├── db/             # Database (SQLite)
+│       ├── middleware/     # Auth middleware
 │       ├── routes/         # REST API routes
 │       ├── websocket/      # WebSocket handlers
 │       └── rooms/          # Room management
