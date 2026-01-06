@@ -30,7 +30,7 @@ A full-featured Excalidraw clone built with Vue 3 and Node.js, featuring real-ti
 Canvara offers a freemium model similar to Excalidraw:
 
 - **Free tier**: Projects stored locally in browser storage
-- **Pro tier ($5/month)**: Cloud storage for projects, accessible from any device
+- **Pro tier ($6/month)**: Cloud storage for projects, accessible from any device
 
 ## Getting Started
 

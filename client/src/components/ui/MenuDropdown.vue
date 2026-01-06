@@ -16,6 +16,7 @@ const emit = defineEmits<{
   share: []
   clearCanvas: []
   openUpgrade: []
+  openVisualNotes: []
 }>()
 
 const appStore = useAppStore()
@@ -43,6 +44,11 @@ function handleExport() {
 
 function handleShare() {
   emit('share')
+  emit('close')
+}
+
+function handleOpenVisualNotes() {
+  emit('openVisualNotes')
   emit('close')
 }
 
@@ -264,6 +270,16 @@ const visibleItems = computed(() =>
 
             <!-- Menu content -->
             <div class="drawer-content">
+              <!-- AI Tools section -->
+              <div class="menu-section">
+                <span class="section-label">AI Tools</span>
+                <button class="menu-item ai-item" @click="handleOpenVisualNotes">
+                  <ToolIcon name="sparkles" />
+                  <span>Magic Notes</span>
+                  <span class="ai-badge">AI</span>
+                </button>
+              </div>
+
               <!-- Canvas section -->
               <div class="menu-section">
                 <span class="section-label">Canvas</span>
@@ -313,7 +329,7 @@ const visibleItems = computed(() =>
                   >
                     <ToolIcon name="zap" />
                     <span>Upgrade to Pro</span>
-                    <span class="upgrade-price">$5/mo</span>
+                    <span class="upgrade-price">$6/mo</span>
                   </button>
 
                   <button 
@@ -345,25 +361,35 @@ const visibleItems = computed(() =>
           <!-- Projects View -->
           <div class="view projects-view">
             <!-- Header with back button -->
-            <div class="drawer-header">
+            <div class="drawer-header projects-header">
               <button class="back-btn" @click="handleBackToMenu">
-                <ToolIcon name="chevronUp" class="back-arrow" />
-                <span>My Projects</span>
+                <ToolIcon name="chevronLeft" class="back-arrow" />
               </button>
+              <span class="projects-title">My Projects</span>
               <button class="drawer-close" @click="emit('close')">
                 <ToolIcon name="close" />
               </button>
             </div>
 
-            <!-- Actions bar -->
-            <div class="actions-bar">
-              <button class="action-btn primary" @click="handleCreateProject">
-                <ToolIcon name="plus" />
-                <span>Save current</span>
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+              <button class="quick-action-btn primary" @click="handleCreateProject">
+                <div class="quick-icon">
+                  <ToolIcon name="plus" />
+                </div>
+                <div class="quick-text">
+                  <span class="quick-label">Save current</span>
+                  <span class="quick-hint">Save to cloud</span>
+                </div>
               </button>
-              <button class="action-btn" @click="handleNewProject">
-                <ToolIcon name="plus" />
-                <span>New blank</span>
+              <button class="quick-action-btn" @click="handleNewProject">
+                <div class="quick-icon">
+                  <ToolIcon name="file" />
+                </div>
+                <div class="quick-text">
+                  <span class="quick-label">New blank</span>
+                  <span class="quick-hint">Start fresh</span>
+                </div>
               </button>
             </div>
 
@@ -371,27 +397,53 @@ const visibleItems = computed(() =>
             <div class="projects-content">
               <div v-if="projectsStore.isLoading" class="loading-state">
                 <div class="spinner" />
-                <span>Loading...</span>
+                <span>Loading your projects...</span>
               </div>
 
               <div v-else-if="projectsStore.projects.length === 0" class="empty-state">
-                <ToolIcon name="folderOpen" class="empty-icon" />
-                <p>No projects yet</p>
-                <p class="empty-hint">Save your current work to the cloud</p>
+                <div class="empty-illustration">
+                  <div class="empty-icon-wrap">
+                    <ToolIcon name="folderOpen" />
+                  </div>
+                  <div class="empty-shapes">
+                    <div class="shape s1"></div>
+                    <div class="shape s2"></div>
+                    <div class="shape s3"></div>
+                  </div>
+                </div>
+                <h4 class="empty-title">No projects yet</h4>
+                <p class="empty-hint">Save your current canvas to the cloud to access it anywhere</p>
               </div>
 
               <div v-else class="projects-list">
                 <div
-                  v-for="project in projectsStore.projects"
+                  v-for="(project, index) in projectsStore.projects"
                   :key="project.id"
                   :class="['project-card', { active: project.id === projectsStore.currentProjectId }]"
+                  :style="{ '--i': index }"
                   @click="handleLoadProject(project)"
                 >
                   <!-- Thumbnail -->
-                  <div class="project-thumbnail">
-                    <img v-if="project.thumbnail" :src="project.thumbnail" :alt="project.name" />
+                  <div 
+                    class="project-thumbnail"
+                    :class="{ 'invert-for-theme': project.thumbnail && project.isDarkTheme !== appStore.isDarkMode }"
+                  >
+                    <img 
+                      v-if="project.thumbnail" 
+                      :src="project.thumbnail" 
+                      :alt="project.name"
+                      loading="lazy"
+                    />
                     <div v-else class="thumbnail-placeholder">
-                      <ToolIcon name="image" />
+                      <div class="placeholder-shapes">
+                        <div class="ph-rect"></div>
+                        <div class="ph-circle"></div>
+                        <div class="ph-line"></div>
+                      </div>
+                    </div>
+                    <!-- Current badge -->
+                    <div v-if="project.id === projectsStore.currentProjectId" class="current-badge">
+                      <ToolIcon name="check" />
                     </div>
                   </div>
 
@@ -411,7 +463,10 @@ const visibleItems = computed(() =>
                     <template v-else>
                       <span class="project-name" @click="handleLoadProject(project)">{{ project.name }}</span>
                     </template>
-                    <span class="project-date">{{ formatDate(project.updatedAt) }}</span>
+                    <span class="project-date">
+                      <ToolIcon name="clock" class="date-icon" />
+                      {{ formatDate(project.updatedAt) }}
+                    </span>
                   </div>
 
                   <!-- Actions -->
@@ -442,13 +497,22 @@ const visibleItems = computed(() =>
               </div>
             </div>
 
-            <!-- Current project indicator -->
+            <!-- Current project footer -->
             <div v-if="projectsStore.isCloudProject" class="current-project-bar">
-              <ToolIcon name="cloud" class="cloud-icon" />
-              <span class="current-label">Current:</span>
-              <span class="current-name">{{ projectsStore.currentProjectName }}</span>
-              <span v-if="projectsStore.isSaving" class="save-status saving">Saving...</span>
-              <span v-else-if="projectsStore.lastSavedAt" class="save-status saved">Saved</span>
+              <div class="current-icon">
+                <ToolIcon name="cloud" />
+              </div>
+              <div class="current-details">
+                <span class="current-name">{{ projectsStore.currentProjectName }}</span>
+                <span v-if="projectsStore.isSaving" class="save-status saving">
+                  <span class="sync-dot"></span>
+                  Saving...
+                </span>
+                <span v-else-if="projectsStore.lastSavedAt" class="save-status saved">
+                  <ToolIcon name="check" class="sync-icon" />
+                  Saved
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -960,7 +1024,20 @@ const visibleItems = computed(() =>
    PROJECTS VIEW STYLES
    ============================================ */
 
-.actions-bar {
+.projects-header {
+  gap: 10px;
+}
+
+.projects-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Quick Actions */
+.quick-actions {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
@@ -968,43 +1045,84 @@ const visibleItems = computed(() =>
   flex-shrink: 0;
 }
 
-.action-btn {
+.quick-action-btn {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-toolbar-border);
-  background: var(--color-toolbar-bg-solid);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  flex: 1;
-  justify-content: center;
-}
-
-.action-btn:hover {
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--color-toolbar-hover);
-  border-color: var(--color-accent-primary);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
 }
 
-.action-btn.primary {
+.quick-action-btn:hover {
+  background: var(--color-toolbar-active);
+  border-color: var(--color-toolbar-border);
+}
+
+.quick-action-btn.primary {
   background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
   border: none;
+}
+
+.quick-action-btn.primary:hover {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.quick-action-btn.primary .quick-icon {
+  background: rgba(255, 255, 255, 0.2);
   color: white;
 }
 
-.action-btn.primary:hover {
-  opacity: 0.9;
+.quick-action-btn.primary .quick-label,
+.quick-action-btn.primary .quick-hint {
+  color: white;
 }
 
-.action-btn :deep(svg) {
+.quick-action-btn.primary .quick-hint {
+  opacity: 0.75;
+}
+
+.quick-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-toolbar-bg-solid);
+  border-radius: 7px;
+  color: var(--color-accent-primary);
+  flex-shrink: 0;
+}
+
+.quick-icon :deep(svg) {
   width: 14px;
   height: 14px;
 }
 
+.quick-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.quick-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.quick-hint {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+/* Projects Content */
 .projects-content {
   flex: 1;
   overflow-y: auto;
@@ -1017,36 +1135,113 @@ const visibleItems = computed(() =>
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  color: var(--color-text-secondary);
-  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
 }
 
 .spinner {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: 3px solid var(--color-toolbar-border);
   border-top-color: var(--color-accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
 
-.empty-icon {
-  width: 40px;
-  height: 40px;
+.loading-state span {
+  font-size: 13px;
   color: var(--color-text-secondary);
-  opacity: 0.5;
+}
+
+/* Empty State */
+.empty-illustration {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-icon-wrap {
+  position: relative;
+  z-index: 1;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-toolbar-hover), var(--color-toolbar-active));
+  border-radius: 16px;
+  color: var(--color-text-tertiary);
+}
+
+.empty-icon-wrap :deep(svg) {
+  width: 28px;
+  height: 28px;
+}
+
+.empty-shapes {
+  position: absolute;
+  inset: -8px;
+  pointer-events: none;
+}
+
+.shape {
+  position: absolute;
+  background: var(--color-accent-primary);
+  opacity: 0.2;
+  border-radius: 50%;
+}
+
+.shape.s1 {
+  width: 10px;
+  height: 10px;
+  top: -4px;
+  right: 4px;
+  animation: floaty 3s ease-in-out infinite;
+}
+
+.shape.s2 {
+  width: 6px;
+  height: 6px;
+  bottom: 8px;
+  left: -4px;
+  animation: floaty 3s ease-in-out infinite 0.5s;
+}
+
+.shape.s3 {
+  width: 5px;
+  height: 5px;
+  bottom: -2px;
+  right: 12px;
+  animation: floaty 3s ease-in-out infinite 1s;
+}
+
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 6px;
 }
 
 .empty-hint {
   font-size: 12px;
-  opacity: 0.7;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+  max-width: 200px;
 }
 
+/* Projects List */
 .projects-list {
   display: flex;
   flex-direction: column;
@@ -1054,30 +1249,42 @@ const visibleItems = computed(() =>
 }
 
 .project-card {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 10px;
   background: var(--color-toolbar-hover);
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
+  animation: cardSlide 0.25s ease backwards;
+  animation-delay: calc(var(--i) * 0.03s);
+}
+
+@keyframes cardSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
 }
 
 .project-card:hover {
   border-color: var(--color-toolbar-border);
+  background: var(--color-toolbar-active);
 }
 
 .project-card.active {
   border-color: var(--color-accent-primary);
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(99, 102, 241, 0.1);
 }
 
+/* Thumbnail */
 .project-thumbnail {
-  width: 48px;
-  height: 36px;
-  border-radius: 6px;
+  position: relative;
+  width: 72px;
+  height: 48px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--color-toolbar-bg-solid);
   flex-shrink: 0;
@@ -1087,6 +1294,12 @@ const visibleItems = computed(() =>
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: filter 0.2s ease;
+}
+
+/* Invert thumbnail colors when theme doesn't match */
+.project-thumbnail.invert-for-theme img {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 .thumbnail-placeholder {
@@ -1095,55 +1308,120 @@ const visibleItems = computed(() =>
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-secondary);
-  opacity: 0.3;
+  background: linear-gradient(135deg, var(--color-toolbar-hover), var(--color-toolbar-active));
 }
 
-.thumbnail-placeholder :deep(svg) {
-  width: 16px;
-  height: 16px;
+.placeholder-shapes {
+  position: relative;
+  width: 80%;
+  height: 70%;
+  opacity: 0.2;
 }
 
+.ph-rect {
+  position: absolute;
+  width: 35%;
+  height: 40%;
+  left: 8%;
+  top: 15%;
+  background: var(--color-text-secondary);
+  border-radius: 3px;
+}
+
+.ph-circle {
+  position: absolute;
+  width: 25%;
+  height: 50%;
+  right: 12%;
+  top: 20%;
+  background: var(--color-text-secondary);
+  border-radius: 50%;
+}
+
+.ph-line {
+  position: absolute;
+  width: 50%;
+  height: 3px;
+  left: 25%;
+  bottom: 15%;
+  background: var(--color-text-secondary);
+  border-radius: 2px;
+}
+
+.current-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-primary);
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.4);
+}
+
+.current-badge :deep(svg) {
+  width: 10px;
+  height: 10px;
+  color: white;
+}
+
+/* Project Info */
 .project-info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  justify-content: center;
+  gap: 3px;
   min-width: 0;
 }
 
 .project-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
+  line-height: 1.3;
 }
 
 .project-name-input {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-primary);
   background: var(--color-toolbar-bg-solid);
   border: 1px solid var(--color-accent-primary);
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: 6px;
+  padding: 4px 8px;
   width: 100%;
   outline: none;
 }
 
 .project-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
 }
 
+.date-icon {
+  width: 11px;
+  height: 11px;
+  opacity: 0.7;
+}
+
+/* Project Actions */
 .project-actions {
   display: flex;
   gap: 2px;
   opacity: 0;
   transition: opacity 0.15s ease;
+  align-self: center;
 }
 
 .project-card:hover .project-actions {
@@ -1170,58 +1448,118 @@ const visibleItems = computed(() =>
 }
 
 .project-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
 .project-action-btn :deep(svg) {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
+/* Current Project Bar */
 .current-project-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 10px;
+  padding: 12px 16px;
   background: var(--color-toolbar-hover);
   border-top: 1px solid var(--color-toolbar-border);
-  font-size: 12px;
   flex-shrink: 0;
 }
 
-.cloud-icon {
-  width: 14px;
-  height: 14px;
-  color: var(--color-accent-primary);
+.current-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border-radius: 8px;
+  color: white;
+  flex-shrink: 0;
 }
 
-.current-label {
-  color: var(--color-text-secondary);
+.current-icon :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.current-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .current-name {
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
 }
 
 .save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  flex-shrink: 0;
+  font-weight: 500;
 }
 
 .save-status.saving {
   color: var(--color-accent-primary);
-  background: rgba(59, 130, 246, 0.1);
 }
 
 .save-status.saved {
   color: #22c55e;
-  background: rgba(34, 197, 94, 0.1);
+}
+
+.sync-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--color-accent-primary);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.sync-icon {
+  width: 11px;
+  height: 11px;
+}
+
+/* AI Menu Item */
+.menu-item.ai-item {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+}
+
+.menu-item.ai-item:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+}
+
+.menu-item.ai-item :deep(svg) {
+  color: #8b5cf6;
+}
+
+.ai-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: auto;
+  flex-shrink: 0;
+  max-width: 26px;
 }
 </style>

@@ -11,6 +11,7 @@ import { authRoutes } from './routes/auth.js'
 import { projectRoutes } from './routes/projects.js'
 import { billingRoutes } from './routes/billing.js'
 import { imageRoutes } from './routes/images.js'
+import { visualizeRoutes } from './routes/visualize.js'
 import { getDb } from './db/index.js'
 
 const app = express()
@@ -73,6 +74,7 @@ app.use('/api/projects', projectRoutes)
 app.use('/api/billing', billingRoutes)
 app.use('/api/rooms', roomRoutes)
 app.use('/api/images', imageRoutes)
+app.use('/api/visualize', visualizeRoutes)
 
 // WebSocket server
 const wss = new WebSocketServer({ server, path: '/ws' })

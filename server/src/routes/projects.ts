@@ -20,6 +20,26 @@ interface Project {
 router.use(authenticate)
 router.use(requirePaidSubscription)
 
+// Helper to detect if a color is dark
+function isColorDark(color: string): boolean {
+  if (!color) return false
+  const darkColors = ['#121212', '#1e1e1e', '#000000', '#000', '#0a0a0a', '#171717']
+  const lowerColor = color.toLowerCase()
+  if (darkColors.includes(lowerColor)) return true
+  
+  let hex = color.replace('#', '')
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+  }
+  if (hex.length !== 6) return false
+  
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance < 0.5
+}
+
 // List all projects for the user
 router.get('/', (req: Request, res: Response): void => {
   const authReq = req as AuthenticatedRequest
@@ -27,20 +47,31 @@ router.get('/', (req: Request, res: Response): void => {
   const userId = authReq.user!.id
 
   const projects = db.prepare(`
-    SELECT id, name, thumbnail, created_at, updated_at
+    SELECT id, name, thumbnail, app_state, created_at, updated_at
     FROM projects
     WHERE user_id = ?
     ORDER BY updated_at DESC
-  `).all(userId) as Pick<Project, 'id' | 'name' | 'thumbnail' | 'created_at' | 'updated_at'>[]
+  `).all(userId) as Pick<Project, 'id' | 'name' | 'thumbnail' | 'app_state' | 'created_at' | 'updated_at'>[]
 
   res.json({ 
-    projects: projects.map(p => ({
-      id: p.id,
-      name: p.name,
-      thumbnail: p.thumbnail,
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-    }))
+    projects: projects.map(p => {
+      // Extract theme from app_state
+      let isDarkTheme = false
+      if (p.app_state) {
+        try {
+          const appState = JSON.parse(p.app_state)
+          isDarkTheme = isColorDark(appState.viewBackgroundColor || '#ffffff')
+        } catch {}
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        thumbnail: p.thumbnail,
+        isDarkTheme,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }
+    })
   })
 })
 

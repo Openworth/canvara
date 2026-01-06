@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from './auth'
+import { useAppStore } from './app'
 import { useCanvasStore } from './canvas'
 import { useImageStore } from './images'
 import type { ExcalidrawElement, AppState } from '../types'
+import rough from 'roughjs'
 
 export interface Project {
   id: string
@@ -19,14 +21,42 @@ export interface ProjectListItem {
   id: string
   name: string
   thumbnail: string | null
+  isDarkTheme: boolean
   createdAt: number
   updatedAt: number
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+// Helper to determine if a color is dark (for theme detection)
+function isColorDark(color: string): boolean {
+  // Handle common dark background colors
+  const darkColors = ['#121212', '#1e1e1e', '#000000', '#000', 'black', '#0a0a0a', '#171717']
+  const lowerColor = color.toLowerCase()
+  
+  if (darkColors.includes(lowerColor)) return true
+  
+  // Parse hex color and calculate luminance
+  let hex = color.replace('#', '')
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+  }
+  
+  if (hex.length !== 6) return false // Default to light if can't parse
+  
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  
+  return luminance < 0.5
+}
+
 export const useProjectsStore = defineStore('projects', () => {
   const authStore = useAuthStore()
+  const appStore = useAppStore()
   const canvasStore = useCanvasStore()
   const imageStore = useImageStore()
 
@@ -102,9 +132,22 @@ export const useProjectsStore = defineStore('projects', () => {
         imageStore.preloadImages(imageFileIds)
       }
 
-      // Load into canvas store
+      // Detect if project was saved in different theme than current
+      const projectBgColor = project.appState?.viewBackgroundColor || '#ffffff'
+      const projectIsDark = isColorDark(projectBgColor)
+      const currentIsDark = appStore.isDarkMode
+      const needsThemeInversion = projectIsDark !== currentIsDark
+
+      // Load elements into canvas store
       canvasStore.setElements(project.elements)
-      if (project.appState) {
+      
+      // If theme mismatch, invert the element colors to match current theme
+      if (needsThemeInversion) {
+        canvasStore.invertElementColors()
+        // Set the correct background for current theme
+        canvasStore.setThemeMode(currentIsDark)
+      } else if (project.appState) {
+        // Same theme, load the saved appState
         Object.assign(canvasStore.appState, project.appState)
       }
 
@@ -302,29 +345,236 @@ export const useProjectsStore = defineStore('projects', () => {
     }, 2000) // 2 second debounce
   }
 
-  // Create new empty project (clears canvas)
-  function newProject() {
+  // Disconnect from current project without clearing canvas
+  function disconnectFromProject() {
+    // Cancel any pending save
+    if (saveTimeout) clearTimeout(saveTimeout)
     currentProjectId.value = null
     currentProjectName.value = 'Untitled'
     lastSavedAt.value = null
+  }
+
+  // Create new empty project (clears canvas)
+  function newProject() {
+    disconnectFromProject()
     canvasStore.clearCanvas()
   }
 
   // Generate thumbnail from canvas
   async function generateThumbnail(): Promise<string | null> {
-    // Simple approach: return null for now, can be implemented with canvas export later
-    return null
+    const elements = canvasStore.visibleElements
+    if (elements.length === 0) return null
+
+    try {
+      // Calculate bounds
+      let minX = Infinity
+      let minY = Infinity
+      let maxX = -Infinity
+      let maxY = -Infinity
+
+      elements.forEach(el => {
+        if ((el.type === 'line' || el.type === 'arrow' || el.type === 'freedraw') && el.points) {
+          el.points.forEach(p => {
+            minX = Math.min(minX, el.x + p.x)
+            minY = Math.min(minY, el.y + p.y)
+            maxX = Math.max(maxX, el.x + p.x)
+            maxY = Math.max(maxY, el.y + p.y)
+          })
+        } else {
+          minX = Math.min(minX, el.x)
+          minY = Math.min(minY, el.y)
+          maxX = Math.max(maxX, el.x + el.width)
+          maxY = Math.max(maxY, el.y + el.height)
+        }
+      })
+
+      if (!isFinite(minX)) return null
+
+      const contentWidth = maxX - minX
+      const contentHeight = maxY - minY
+      const padding = Math.max(Math.max(contentWidth, contentHeight) * 0.04, 10)
+
+      // Thumbnail dimensions
+      const thumbWidth = 320
+      const thumbHeight = 200
+      const scale = Math.min(
+        (thumbWidth - padding * 2) / contentWidth,
+        (thumbHeight - padding * 2) / contentHeight,
+        2
+      )
+
+      const canvas = document.createElement('canvas')
+      canvas.width = thumbWidth
+      canvas.height = thumbHeight
+      const ctx = canvas.getContext('2d')!
+
+      // Fill background
+      ctx.fillStyle = canvasStore.appState.viewBackgroundColor
+      ctx.fillRect(0, 0, thumbWidth, thumbHeight)
+
+      // Center content in thumbnail
+      const scaledWidth = contentWidth * scale
+      const scaledHeight = contentHeight * scale
+      const offsetX = (thumbWidth - scaledWidth) / 2
+      const offsetY = (thumbHeight - scaledHeight) / 2
+
+      ctx.translate(offsetX, offsetY)
+      ctx.scale(scale, scale)
+      ctx.translate(-minX, -minY)
+
+      // Render elements
+      renderElementsToThumbnail(canvas, ctx, elements)
+
+      return canvas.toDataURL('image/webp', 0.8)
+    } catch (e) {
+      console.error('Failed to generate thumbnail:', e)
+      return null
+    }
   }
 
-  // Watch for changes and auto-save if we have a current project
+  // Helper to get roughjs options
+  function getRoughOptions(el: ExcalidrawElement) {
+    const dashGap = el.strokeStyle === 'dashed' ? [12, 8] : el.strokeStyle === 'dotted' ? [3, 6] : undefined
+    return {
+      seed: el.seed,
+      roughness: el.roughness,
+      bowing: el.roughness,
+      strokeWidth: el.strokeWidth,
+      stroke: el.strokeColor,
+      fill: el.backgroundColor !== 'transparent' ? el.backgroundColor : undefined,
+      fillStyle: el.fillStyle === 'none' ? undefined : el.fillStyle,
+      strokeLineDash: dashGap,
+    }
+  }
+
+  // Render elements to thumbnail canvas
+  function renderElementsToThumbnail(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, elements: ExcalidrawElement[]) {
+    const rc = rough.canvas(canvas)
+
+    elements.forEach(el => {
+      if (el.isDeleted) return
+
+      ctx.save()
+      ctx.globalAlpha = el.opacity / 100
+
+      if (el.angle) {
+        const cx = el.x + el.width / 2
+        const cy = el.y + el.height / 2
+        ctx.translate(cx, cy)
+        ctx.rotate(el.angle)
+        ctx.translate(-cx, -cy)
+      }
+
+      const options = getRoughOptions(el)
+
+      switch (el.type) {
+        case 'rectangle':
+          if (el.roundness && el.roundness.type === 3) {
+            const radius = Math.min(Math.abs(el.width), Math.abs(el.height)) * 0.1
+            const r = Math.min(radius, Math.abs(el.width) / 2, Math.abs(el.height) / 2)
+            const actualX = el.width < 0 ? el.x + el.width : el.x
+            const actualY = el.height < 0 ? el.y + el.height : el.y
+            const actualW = Math.abs(el.width)
+            const actualH = Math.abs(el.height)
+            const path = `M ${actualX + r} ${actualY} L ${actualX + actualW - r} ${actualY} Q ${actualX + actualW} ${actualY} ${actualX + actualW} ${actualY + r} L ${actualX + actualW} ${actualY + actualH - r} Q ${actualX + actualW} ${actualY + actualH} ${actualX + actualW - r} ${actualY + actualH} L ${actualX + r} ${actualY + actualH} Q ${actualX} ${actualY + actualH} ${actualX} ${actualY + actualH - r} L ${actualX} ${actualY + r} Q ${actualX} ${actualY} ${actualX + r} ${actualY} Z`
+            rc.path(path, options)
+          } else {
+            rc.rectangle(el.x, el.y, el.width, el.height, options)
+          }
+          break
+        case 'ellipse':
+          rc.ellipse(el.x + el.width / 2, el.y + el.height / 2, el.width, el.height, options)
+          break
+        case 'diamond':
+          const dcx = el.x + el.width / 2
+          const dcy = el.y + el.height / 2
+          rc.polygon([
+            [dcx, el.y],
+            [el.x + el.width, dcy],
+            [dcx, el.y + el.height],
+            [el.x, dcy],
+          ], options)
+          break
+        case 'line':
+        case 'arrow':
+          if (el.points && el.points.length >= 2) {
+            const pts: [number, number][] = el.points.map(p => [el.x + p.x, el.y + p.y])
+            if (pts.length === 2) {
+              rc.line(pts[0][0], pts[0][1], pts[1][0], pts[1][1], options)
+            } else {
+              rc.linearPath(pts, options)
+            }
+            if (el.type === 'arrow' && el.endArrowhead && el.endArrowhead !== 'none') {
+              const last = pts[pts.length - 1]
+              const prev = pts[pts.length - 2]
+              const angle = Math.atan2(last[1] - prev[1], last[0] - prev[0])
+              const size = 15 + el.strokeWidth * 2
+              rc.linearPath([
+                [last[0] - size * Math.cos(angle - Math.PI / 6), last[1] - size * Math.sin(angle - Math.PI / 6)],
+                last,
+                [last[0] - size * Math.cos(angle + Math.PI / 6), last[1] - size * Math.sin(angle + Math.PI / 6)],
+              ], options)
+            }
+          }
+          break
+        case 'freedraw':
+          if (el.points && el.points.length >= 2) {
+            ctx.strokeStyle = el.strokeColor
+            ctx.lineWidth = el.strokeWidth
+            ctx.lineCap = 'round'
+            ctx.lineJoin = 'round'
+            ctx.beginPath()
+            ctx.moveTo(el.x + el.points[0].x, el.y + el.points[0].y)
+            el.points.slice(1).forEach(p => ctx.lineTo(el.x + p.x, el.y + p.y))
+            ctx.stroke()
+          }
+          break
+        case 'text':
+          if (el.text) {
+            let fontFamily = 'system-ui'
+            if (el.fontFamily === 'virgil') fontFamily = '"Caveat", cursive'
+            else if (el.fontFamily === 'code') fontFamily = '"Fira Code", monospace'
+            ctx.font = `${el.fontSize}px ${fontFamily}`
+            ctx.fillStyle = el.strokeColor
+            ctx.textAlign = (el.textAlign as CanvasTextAlign) || 'center'
+            ctx.textBaseline = 'middle'
+            const lines = el.text.split('\n')
+            const lineHeight = (el.fontSize || 20) * (el.lineHeight || 1.25)
+            const totalTextHeight = lines.length * lineHeight
+            let tx = el.x + el.width / 2
+            if (el.textAlign === 'left') { tx = el.x; ctx.textAlign = 'left' }
+            else if (el.textAlign === 'right') { tx = el.x + el.width; ctx.textAlign = 'right' }
+            const startY = el.y + (el.height - totalTextHeight) / 2 + lineHeight / 2
+            lines.forEach((line, i) => ctx.fillText(line, tx, startY + i * lineHeight))
+          }
+          break
+      }
+
+      ctx.restore()
+    })
+  }
+
+  // Watch for element changes and auto-save if we have a current project
   watch(
     () => canvasStore.elements,
     () => {
+      // Don't save if receiving remote updates (collaboration) or no project open
+      if (canvasStore.isReceivingRemoteUpdate) return
       if (currentProjectId.value && authStore.isPaidUser) {
         debouncedSave()
       }
     },
     { deep: true }
+  )
+
+  // Also watch for appState changes (background color, etc.)
+  watch(
+    () => canvasStore.appState.viewBackgroundColor,
+    () => {
+      if (currentProjectId.value && authStore.isPaidUser) {
+        debouncedSave()
+      }
+    }
   )
 
   return {
@@ -350,6 +600,7 @@ export const useProjectsStore = defineStore('projects', () => {
     duplicateProject,
     renameProject,
     newProject,
+    disconnectFromProject,
     debouncedSave,
   }
 })

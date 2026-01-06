@@ -702,6 +702,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
   // Color inversion map for theme switching
   const colorInversionMap: Record<string, string> = {
+    // Basic black/white
     '#1e1e1e': '#ffffff',
     '#ffffff': '#1e1e1e',
     '#000000': '#ffffff',
@@ -709,10 +710,22 @@ export const useCanvasStore = defineStore('canvas', () => {
     '#000': '#ffffff',
     'black': '#ffffff',
     'white': '#1e1e1e',
+    // AI-generated theme colors: light pastels ↔ dark tones
+    '#e8f4fd': '#1e3a5f', // blue
+    '#1e3a5f': '#e8f4fd',
+    '#fef3c7': '#3d2c1f', // yellow/brown
+    '#3d2c1f': '#fef3c7',
+    '#dcfce7': '#1a3d2e', // green
+    '#1a3d2e': '#dcfce7',
+    '#fce7f3': '#3d1f3a', // pink/purple
+    '#3d1f3a': '#fce7f3',
+    '#2d2d3d': '#f0f0f5', // neutral gray
+    '#f0f0f5': '#2d2d3d',
   }
 
   // Invert a single color
-  function invertColor(color: string): string {
+  function invertColor(color: string | undefined): string {
+    if (!color) return color as string
     const lowerColor = color.toLowerCase()
     if (colorInversionMap[lowerColor]) {
       return colorInversionMap[lowerColor]

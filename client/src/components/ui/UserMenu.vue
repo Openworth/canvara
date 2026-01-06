@@ -136,7 +136,7 @@ onUnmounted(() => {
         >
           <ToolIcon name="zap" class="menu-icon" />
           <span>Upgrade to Pro</span>
-          <span class="upgrade-price">$5/mo</span>
+          <span class="upgrade-price">$6/mo</span>
         </button>
 
         <button 

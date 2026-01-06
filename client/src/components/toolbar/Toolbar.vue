@@ -71,6 +71,12 @@ const utilityTools: ToolConfig[] = [
   { id: 'hand', icon: 'hand', label: 'Hand (pan)', shortcut: 'H or Space' },
 ]
 
+// Magic Notes button handler
+function openVisualNotes() {
+  appStore.openVisualNotesModal()
+  showMoreTools.value = false
+}
+
 // Primary tools shown on mobile (most used)
 const primaryTools: ToolConfig[] = [
   { id: 'hand', icon: 'hand', label: 'Pan', shortcut: 'H or Space' },
@@ -297,11 +303,25 @@ onUnmounted(() => {
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
         </button>
       </div>
+
+      <!-- Elegant divider -->
+      <div class="tool-divider" />
+
+      <!-- AI Tools -->
+      <div class="tool-group" style="--group-index: 6;">
+        <button
+          class="tool-btn tool-btn-ai"
+          v-tooltip.bottom="'Magic Notes (AI)'"
+          @click="openVisualNotes"
+        >
+          <ToolIcon name="sparkles" class="w-4 h-4" />
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Mobile: Floating bottom toolbar -->
-  <div v-else v-show="!appStore.showExportModal && !appStore.showMobilePropertiesPanel" class="mobile-toolbar-wrapper">
+  <div v-else v-show="!appStore.showExportModal && !appStore.showMobilePropertiesPanel && !appStore.showVisualNotesModal" class="mobile-toolbar-wrapper">
     <div class="mobile-toolbar">
       <!-- Undo/Redo Section -->
       <div class="mobile-section">
@@ -380,6 +400,21 @@ onUnmounted(() => {
               <span v-if="activeTool === tool.id" class="dropdown-item-check">
                 <ToolIcon name="check" class="w-4 h-4" />
               </span>
+            </button>
+            
+            <!-- Divider -->
+            <div class="dropdown-divider" />
+
+            <!-- Magic Notes -->
+            <button
+              class="dropdown-item dropdown-item-ai"
+              @click="openVisualNotes"
+            >
+              <span class="dropdown-item-icon dropdown-item-icon-ai">
+                <ToolIcon name="sparkles" class="w-5 h-5" />
+              </span>
+              <span class="dropdown-item-label">Magic Notes</span>
+              <span class="dropdown-item-badge">AI</span>
             </button>
             
             <!-- Divider -->
@@ -539,6 +574,29 @@ onUnmounted(() => {
 .tool-btn.disabled {
   opacity: 0.3;
   pointer-events: none;
+}
+
+/* AI Tool Button - Special styling */
+.tool-btn-ai {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+  color: #8b5cf6;
+}
+
+.tool-btn-ai:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%);
+  color: #7c3aed;
+}
+
+.tool-btn-ai:hover::before {
+  opacity: 0;
+}
+
+.dark .tool-btn-ai {
+  color: #a78bfa;
+}
+
+.dark .tool-btn-ai:hover {
+  color: #c4b5fd;
 }
 
 .tool-divider {
@@ -836,5 +894,30 @@ onUnmounted(() => {
     transparent 100%
   );
   margin: 6px 0;
+}
+
+/* AI Dropdown Item */
+.dropdown-item-ai {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+}
+
+.dropdown-item-ai:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
+}
+
+.dropdown-item-icon-ai {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+}
+
+.dropdown-item-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 </style>

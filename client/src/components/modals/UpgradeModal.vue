@@ -72,10 +72,10 @@ async function handleManageSubscription() {
 }
 
 const features = [
+  { icon: 'sparkles', text: 'Magic Notes - AI-powered visuals' },
   { icon: 'cloud', text: 'Unlimited cloud projects' },
   { icon: 'save', text: 'Auto-save to cloud' },
   { icon: 'folder', text: 'Access from any device' },
-  { icon: 'zap', text: 'Priority support' },
 ]
 </script>
 
@@ -132,7 +132,7 @@ const features = [
         </div>
 
         <div class="price-section">
-          <span class="price">$5</span>
+          <span class="price">$6</span>
           <span class="period">/month</span>
         </div>
 

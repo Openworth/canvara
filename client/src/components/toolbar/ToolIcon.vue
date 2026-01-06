@@ -33,6 +33,7 @@ import {
   MoreHorizontal,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
   GripHorizontal,
   Folder,
   CreditCard,
@@ -49,6 +50,8 @@ import {
   ArrowUpToLine,
   ArrowDownToLine,
   Layers,
+  Clock,
+  File,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -108,6 +111,9 @@ const iconMap: Record<string, any> = {
   bringForward: ChevronUp,
   sendBackward: ChevronDown,
   layers: Layers,
+  clock: Clock,
+  file: File,
+  chevronLeft: ChevronLeft,
 }
 
 const IconComponent = computed(() => iconMap[props.name] || HelpCircle)

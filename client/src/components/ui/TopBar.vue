@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { useAppStore } from '../../stores/app'
 import { useCanvasStore } from '../../stores/canvas'
+import { useProjectsStore } from '../../stores/projects'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ShareModal from '../modals/ShareModal.vue'
 import ExportModal from '../modals/ExportModal.vue'
@@ -11,18 +12,23 @@ import ConfirmModal from '../modals/ConfirmModal.vue'
 import MenuDropdown from './MenuDropdown.vue'
 import UpgradeModal from '../modals/UpgradeModal.vue'
 import CloudSyncIndicator from './CloudSyncIndicator.vue'
+import VisualNotesModal from '../modals/VisualNotesModal.vue'
 
 const collaborationStore = useCollaborationStore()
 const appStore = useAppStore()
 const canvasStore = useCanvasStore()
+const projectsStore = useProjectsStore()
 
 const showMenu = ref(false)
 const showShareModal = ref(false)
 const showKeyboardShortcutsModal = ref(false)
 const showClearCanvasModal = ref(false)
-const showUpgradeModal = ref(false)
 
 function handleClearCanvasConfirm() {
+  // Disconnect from current project first to avoid saving empty canvas
+  if (projectsStore.disconnectFromProject) {
+    projectsStore.disconnectFromProject()
+  }
   canvasStore.clearCanvas()
   showClearCanvasModal.value = false
 }
@@ -84,7 +90,8 @@ onUnmounted(() => {
         @export="appStore.openExportModal()"
         @share="showShareModal = true"
         @clear-canvas="showClearCanvasModal = true"
-        @open-upgrade="showUpgradeModal = true"
+        @open-upgrade="appStore.openUpgradeModal()"
+        @open-visual-notes="appStore.openVisualNotesModal()"
       />
     </div>
 
@@ -176,7 +183,8 @@ onUnmounted(() => {
         @export="appStore.openExportModal()"
         @share="showShareModal = true"
         @clear-canvas="showClearCanvasModal = true"
-        @open-upgrade="showUpgradeModal = true"
+        @open-upgrade="appStore.openUpgradeModal()"
+        @open-visual-notes="appStore.openVisualNotesModal()"
       />
     </div>
 
@@ -243,8 +251,13 @@ onUnmounted(() => {
   />
 
   <UpgradeModal
-    v-if="showUpgradeModal"
-    @close="showUpgradeModal = false"
+    v-if="appStore.showUpgradeModal"
+    @close="appStore.closeUpgradeModal()"
+  />
+
+  <VisualNotesModal
+    v-if="appStore.showVisualNotesModal"
+    @close="appStore.closeVisualNotesModal()"
   />
 </template>
 

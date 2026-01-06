@@ -28,15 +28,16 @@ function handleCancel() {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center">
-    <!-- Backdrop -->
-    <div
-      class="absolute inset-0 modal-backdrop"
-      @click="handleCancel"
-    />
+  <Teleport to="body">
+    <div class="confirm-overlay">
+      <!-- Backdrop -->
+      <div
+        class="confirm-backdrop"
+        @click="handleCancel"
+      />
 
-    <!-- Modal -->
-    <div class="confirm-modal">
+      <!-- Modal -->
+      <div class="confirm-modal">
       <!-- Header -->
       <div class="modal-header">
         <div class="header-content">
@@ -75,11 +76,35 @@ function handleCancel() {
           {{ confirmText }}
         </button>
       </div>
+      </div>
     </div>
-  </div>
+  </Teleport>
 </template>
 
 <style scoped>
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .confirm-modal {
   position: relative;
   width: 100%;
