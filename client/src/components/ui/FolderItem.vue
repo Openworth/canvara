@@ -7,6 +7,7 @@ const props = defineProps<{
   folder: Folder
   isActive: boolean
   isEditing?: boolean
+  count?: number
 }>()
 
 const emit = defineEmits<{
@@ -77,7 +78,7 @@ function handleDrop(e: DragEvent) {
     </template>
     <template v-else>
       <span class="folder-name">{{ folder.name }}</span>
-      <span class="folder-count">{{ folder.projectCount }}</span>
+      <span class="folder-count">{{ count ?? folder.projectCount }}</span>
     </template>
 
     <div class="folder-actions" @click.stop>

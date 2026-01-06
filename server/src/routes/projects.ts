@@ -497,6 +497,19 @@ router.post('/:id/restore', (req: Request, res: Response): void => {
   res.json({ success: true, isTrashed: false })
 })
 
+// Empty trash (delete all trashed projects) - MUST be before /:id route
+router.delete('/trash/empty', (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
+  const db = getDb()
+  const userId = authReq.user!.id
+
+  const result = db.prepare(`
+    DELETE FROM projects WHERE user_id = ? AND is_trashed = 1
+  `).run(userId)
+
+  res.json({ success: true, deletedCount: result.changes })
+})
+
 // Permanently delete a project
 router.delete('/:id/permanent', (req: Request, res: Response): void => {
   const authReq = req as AuthenticatedRequest
@@ -689,19 +702,6 @@ router.delete('/:id/tags/:tagId', (req: Request, res: Response): void => {
   // Return updated tags
   const tags = getProjectTags(db, projectId)
   res.json({ success: true, tags })
-})
-
-// Empty trash (delete all trashed projects)
-router.delete('/trash/empty', (req: Request, res: Response): void => {
-  const authReq = req as AuthenticatedRequest
-  const db = getDb()
-  const userId = authReq.user!.id
-
-  const result = db.prepare(`
-    DELETE FROM projects WHERE user_id = ? AND is_trashed = 1
-  `).run(userId)
-
-  res.json({ success: true, deletedCount: result.changes })
 })
 
 export { router as projectRoutes }

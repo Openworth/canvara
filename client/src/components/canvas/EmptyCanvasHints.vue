@@ -19,13 +19,6 @@ const shouldShow = computed(() => {
 // Color based on theme
 const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(30, 30, 30, 0.45)')
 
-// Feature highlights
-const features = [
-  { icon: 'users', label: 'Real-time collaboration' },
-  { icon: 'infinity', label: 'Infinite canvas' },
-  { icon: 'cloud', label: 'Cloud sync' },
-  { icon: 'download', label: 'Export anywhere' },
-]
 </script>
 
 <template>
@@ -55,41 +48,25 @@ const features = [
           The collaborative whiteboard for teams and creatives — free to start
         </p>
 
-        <!-- Feature Pills -->
-        <div class="features-row">
-          <div 
-            v-for="(feature, index) in features" 
-            :key="feature.label"
-            class="feature-pill"
-            :style="{ '--pill-index': index }"
-          >
-            <!-- Feature Icons -->
-            <svg v-if="feature.icon === 'users'" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <svg v-else-if="feature.icon === 'infinity'" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.74-8z"/>
-            </svg>
-            <svg v-else-if="feature.icon === 'cloud'" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-            </svg>
-            <svg v-else-if="feature.icon === 'download'" class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            <span class="feature-label">{{ feature.label }}</span>
+        <!-- Get Started Options -->
+        <div class="start-options">
+          <!-- Manual drawing hint -->
+          <div class="start-option start-option-keyboard">
+            <span class="start-option-text">
+              Press <kbd>R</kbd> for rectangle, <kbd>O</kbd> for ellipse
+            </span>
           </div>
-        </div>
 
-        <!-- Getting Started Hint -->
-        <div class="getting-started">
-          <span class="getting-started-text">
-            Press <kbd>R</kbd> for rectangle, <kbd>O</kbd> for ellipse, or click the toolbar to begin
-          </span>
+          <span class="start-divider">or</span>
+
+          <!-- Magic Notes button -->
+          <button class="start-option start-option-magic" @click="appStore.openVisualNotesModal()">
+            <svg class="magic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" stroke-linejoin="round"/>
+              <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" stroke-linejoin="round"/>
+            </svg>
+            <span>Generate with AI</span>
+          </button>
         </div>
       </div>
 
@@ -228,81 +205,48 @@ const features = [
 }
 
 /* ============================================
-   FEATURE PILLS
+   GET STARTED OPTIONS
    ============================================ */
 
-.features-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 28px;
-}
-
-.feature-pill {
+.start-options {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 14px;
+  gap: 16px;
+  margin-top: 28px;
+  opacity: 0;
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.6s;
+}
+
+.start-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
   background: var(--color-toolbar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--color-toolbar-border);
-  border-radius: 100px;
+  border-radius: 10px;
   font-family: var(--font-ui);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
   color: var(--color-text-secondary);
-  opacity: 0;
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(0.55s + var(--pill-index) * 0.08s);
   transition: all 0.2s ease;
 }
 
-.feature-pill:hover {
-  border-color: var(--color-accent-primary);
-  color: var(--color-text-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px -4px var(--color-accent-glow);
-  pointer-events: auto;
-}
-
-.feature-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.feature-label {
-  white-space: nowrap;
-}
-
-/* ============================================
-   GETTING STARTED HINT
-   ============================================ */
-
-.getting-started {
-  margin-top: 32px;
-  opacity: 0;
-  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: 0.95s;
-}
-
-.getting-started-text {
+.start-option-text {
   font-family: var(--font-virgil);
-  font-size: 18px;
+  font-size: 15px;
   font-style: italic;
   color: var(--color-text-tertiary);
 }
 
-.getting-started-text kbd {
+.start-option-text kbd {
   display: inline-block;
-  padding: 2px 7px;
+  padding: 2px 6px;
   margin: 0 2px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 600;
   color: var(--color-text-primary);
@@ -310,6 +254,41 @@ const features = [
   border: 1px solid var(--color-toolbar-border);
   border-radius: 4px;
   box-shadow: 0 1px 0 var(--color-toolbar-border);
+}
+
+.start-divider {
+  font-family: var(--font-virgil);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--color-text-tertiary);
+  opacity: 0.6;
+}
+
+.start-option-magic {
+  cursor: pointer;
+  pointer-events: auto;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.start-option-magic:hover {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.25) 0%, rgba(168, 85, 247, 0.25) 100%);
+  border-color: rgba(168, 85, 247, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px -4px rgba(168, 85, 247, 0.3);
+}
+
+.start-option-magic:active {
+  transform: translateY(0);
+}
+
+.magic-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: #a855f7;
 }
 
 /* ============================================
@@ -332,6 +311,7 @@ const features = [
   position: absolute;
   top: -80px;
   left: -10px;
+  transform: translateX(-50%);
 }
 
 .hint-text {
@@ -344,6 +324,7 @@ const features = [
   color: var(--color-text-secondary);
   opacity: 0.8;
   white-space: nowrap;
+  margin-top: 14px;
 }
 
 /* Collaboration hint - positioned top right, pointing to Share button */
@@ -438,7 +419,7 @@ const features = [
   .hint-toolbar {
     left: 50%;
     top: auto;
-    bottom: 110px;
+    bottom: 100px;
     transform: translateX(-50%);
     flex-direction: column;
     align-items: center;
@@ -448,13 +429,13 @@ const features = [
   .hint-toolbar .hint-text {
     order: -1; /* Text above arrow */
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
   }
   
   .hint-toolbar .hint-arrow {
     position: static;
-    /* Rotate arrow to point down */
-    transform: rotate(90deg) scaleX(-1);
+    /* Flip arrow to point down toward bottom toolbar */
+    transform: rotate(195deg);
   }
   
   /* Collab hint: positioned top-left, pointing to sidebar toggle */
@@ -466,6 +447,7 @@ const features = [
   
   .hint-collab .hint-text-right {
     text-align: left;
+    margin-top: 14px;
   }
   
   .hint-collab .hint-arrow-curved {
@@ -496,24 +478,23 @@ const features = [
     font-size: 14px;
   }
   
-  .features-row {
-    gap: 8px;
+  .start-options {
+    flex-direction: column;
+    gap: 12px;
     margin-top: 24px;
   }
   
-  .feature-pill {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-  
-  .feature-icon {
-    width: 14px;
-    height: 14px;
-  }
-  
-  /* Hide keyboard shortcut hint on mobile */
-  .getting-started {
+  /* Hide keyboard hint on mobile - just show AI button */
+  .start-option-keyboard {
     display: none;
+  }
+  
+  .start-divider {
+    display: none;
+  }
+  
+  .start-option-magic {
+    padding: 12px 20px;
   }
 }
 
@@ -526,15 +507,14 @@ const features = [
     font-size: 13px;
   }
   
-  .feature-pill {
-    padding: 5px 10px;
-    font-size: 11px;
-    gap: 5px;
+  .start-option-magic {
+    padding: 10px 16px;
+    font-size: 13px;
   }
   
-  .feature-icon {
-    width: 12px;
-    height: 12px;
+  .magic-icon {
+    width: 14px;
+    height: 14px;
   }
 }
 </style>

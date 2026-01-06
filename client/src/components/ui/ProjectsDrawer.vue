@@ -71,6 +71,17 @@ const currentFolderColor = computed(() => {
   return null
 })
 
+// Compute folder counts reactively from projects list
+const folderCounts = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const project of projectsStore.projects) {
+    if (!project.isTrashed && !project.isArchived && project.folderId) {
+      counts[project.folderId] = (counts[project.folderId] || 0) + 1
+    }
+  }
+  return counts
+})
+
 // Format date helper
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp * 1000)
@@ -106,7 +117,7 @@ function handleNewProject() {
 
 async function handleCreateProject() {
   await projectsStore.createProject()
-  emit('close')
+  // Don't close the menu - let user continue browsing projects
 }
 
 function handleDeleteClick(project: ProjectListItem, permanent = false) {
@@ -380,6 +391,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
               :folder="folder"
               :is-active="projectsStore.currentView === 'folder' && projectsStore.currentFolderId === folder.id"
               :is-editing="editingFolderId === folder.id"
+              :count="folderCounts[folder.id] || 0"
               @select="handleFolderSelect(folder)"
               @edit="handleFolderEdit(folder)"
               @delete="handleFolderDelete(folder)"
@@ -679,6 +691,21 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
                     <ToolIcon name="copy" />
                   </button>
                   <button 
+                    class="project-action-btn" 
+                    v-tooltip.bottom="'Tags'"
+                    @click="showTagPicker = project.id"
+                  >
+                    <ToolIcon name="tag" />
+                  </button>
+                  <button 
+                    class="project-action-btn" 
+                    :class="{ active: project.isArchived }"
+                    v-tooltip.bottom="project.isArchived ? 'Unarchive' : 'Archive'"
+                    @click="handleToggleArchive(project)"
+                  >
+                    <ToolIcon name="archive" />
+                  </button>
+                  <button 
                     class="project-action-btn delete" 
                     v-tooltip.bottom="'Delete'"
                     @click="handleDeleteClick(project)"
@@ -742,17 +769,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
                 <span v-if="project.tags.length > 3" class="more-tags">+{{ project.tags.length - 3 }}</span>
               </div>
 
-              <!-- Star -->
-              <button
-                v-if="!project.isTrashed"
-                class="list-star"
-                :class="{ starred: project.isStarred }"
-                @click.stop="handleToggleStar(project)"
-              >
-                <ToolIcon :name="project.isStarred ? 'starFilled' : 'star'" />
-              </button>
-
-              <!-- Actions -->
+              <!-- Actions (shown on hover, before star for consistent layout) -->
               <div class="list-actions" @click.stop>
                 <template v-if="project.isTrashed">
                   <button class="action-btn" @click="handleRestore(project)">
@@ -763,17 +780,38 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
                   </button>
                 </template>
                 <template v-else>
-                  <button class="action-btn" @click="startRenaming(project)">
+                  <button class="action-btn" v-tooltip.bottom="'Rename'" @click="startRenaming(project)">
                     <ToolIcon name="pencil" />
                   </button>
-                  <button class="action-btn" @click="handleDuplicate(project)">
+                  <button class="action-btn" v-tooltip.bottom="'Duplicate'" @click="handleDuplicate(project)">
                     <ToolIcon name="copy" />
                   </button>
-                  <button class="action-btn delete" @click="handleDeleteClick(project)">
+                  <button class="action-btn" v-tooltip.bottom="'Tags'" @click="showTagPicker = project.id">
+                    <ToolIcon name="tag" />
+                  </button>
+                  <button 
+                    class="action-btn" 
+                    :class="{ active: project.isArchived }"
+                    v-tooltip.bottom="project.isArchived ? 'Unarchive' : 'Archive'" 
+                    @click="handleToggleArchive(project)"
+                  >
+                    <ToolIcon name="archive" />
+                  </button>
+                  <button class="action-btn delete" v-tooltip.bottom="'Delete'" @click="handleDeleteClick(project)">
                     <ToolIcon name="trash" />
                   </button>
                 </template>
               </div>
+
+              <!-- Star (always visible, rightmost position) -->
+              <button
+                v-if="!project.isTrashed"
+                class="list-star"
+                :class="{ starred: project.isStarred }"
+                @click.stop="handleToggleStar(project)"
+              >
+                <ToolIcon :name="project.isStarred ? 'starFilled' : 'star'" />
+              </button>
             </div>
           </div>
         </div>
@@ -1689,6 +1727,10 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   transform: scale(1.05);
 }
 
+.project-action-btn.active {
+  color: var(--color-accent-primary);
+}
+
 .project-action-btn.delete:hover {
   background: #fee2e2;
   color: #ef4444;
@@ -1821,10 +1863,6 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   display: flex;
 }
 
-.project-list-item:hover .list-star:not(.starred) {
-  display: none;
-}
-
 .action-btn {
   width: 28px;
   height: 28px;
@@ -1842,6 +1880,10 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 .action-btn:hover {
   background: var(--color-toolbar-active);
   color: var(--color-text-primary);
+}
+
+.action-btn.active {
+  color: var(--color-accent-primary);
 }
 
 .action-btn.delete:hover {

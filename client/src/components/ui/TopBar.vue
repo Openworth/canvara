@@ -13,6 +13,7 @@ import MenuDropdown from './MenuDropdown.vue'
 import UpgradeModal from '../modals/UpgradeModal.vue'
 import CloudSyncIndicator from './CloudSyncIndicator.vue'
 import VisualNotesModal from '../modals/VisualNotesModal.vue'
+import ProjectsDrawer from './ProjectsDrawer.vue'
 
 const collaborationStore = useCollaborationStore()
 const appStore = useAppStore()
@@ -23,6 +24,7 @@ const showMenu = ref(false)
 const showShareModal = ref(false)
 const showKeyboardShortcutsModal = ref(false)
 const showClearCanvasModal = ref(false)
+const showProjectsDrawer = ref(false)
 
 function handleClearCanvasConfirm() {
   // Disconnect from current project first to avoid saving empty canvas
@@ -92,6 +94,7 @@ onUnmounted(() => {
         @clear-canvas="showClearCanvasModal = true"
         @open-upgrade="appStore.openUpgradeModal()"
         @open-visual-notes="appStore.openVisualNotesModal()"
+        @open-projects="showProjectsDrawer = true"
       />
     </div>
 
@@ -185,6 +188,7 @@ onUnmounted(() => {
         @clear-canvas="showClearCanvasModal = true"
         @open-upgrade="appStore.openUpgradeModal()"
         @open-visual-notes="appStore.openVisualNotesModal()"
+        @open-projects="showProjectsDrawer = true"
       />
     </div>
 
@@ -258,6 +262,11 @@ onUnmounted(() => {
   <VisualNotesModal
     v-if="appStore.showVisualNotesModal"
     @close="appStore.closeVisualNotesModal()"
+  />
+
+  <ProjectsDrawer
+    v-if="showProjectsDrawer"
+    @close="showProjectsDrawer = false"
   />
 </template>
 

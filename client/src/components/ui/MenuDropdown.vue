@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useAppStore } from '../../stores/app'
 import { useAuthStore } from '../../stores/auth'
-import { useProjectsStore, type ProjectListItem } from '../../stores/projects'
 import ToolIcon from '../toolbar/ToolIcon.vue'
-import ConfirmModal from '../modals/ConfirmModal.vue'
 
 const props = defineProps<{
   isMobile?: boolean
@@ -17,20 +15,12 @@ const emit = defineEmits<{
   clearCanvas: []
   openUpgrade: []
   openVisualNotes: []
+  openProjects: []
 }>()
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
-const projectsStore = useProjectsStore()
 
-// View state: 'menu' or 'projects'
-const currentView = ref<'menu' | 'projects'>('menu')
-
-// Projects-related state
-const showDeleteConfirm = ref(false)
-const projectToDelete = ref<ProjectListItem | null>(null)
-const editingProjectId = ref<string | null>(null)
-const editingName = ref('')
 
 function handleClearCanvas() {
   emit('clearCanvas')
@@ -67,99 +57,13 @@ function handleLogout() {
 }
 
 function handleOpenProjects() {
-  currentView.value = 'projects'
-  projectsStore.fetchProjects()
-}
-
-function handleBackToMenu() {
-  currentView.value = 'menu'
+  emit('openProjects')
+  emit('close')
 }
 
 function handleOpenUpgrade() {
   emit('openUpgrade')
   emit('close')
-}
-
-// Projects functions
-function formatDate(timestamp: number): string {
-  const date = new Date(timestamp * 1000)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-  if (diffDays === 0) {
-    return 'Today'
-  } else if (diffDays === 1) {
-    return 'Yesterday'
-  } else if (diffDays < 7) {
-    return `${diffDays} days ago`
-  } else {
-    return date.toLocaleDateString()
-  }
-}
-
-async function handleLoadProject(project: ProjectListItem) {
-  await projectsStore.loadProject(project.id)
-  emit('close')
-}
-
-function handleNewProject() {
-  projectsStore.newProject()
-  emit('close')
-}
-
-async function handleCreateProject() {
-  await projectsStore.createProject()
-  emit('close')
-}
-
-function handleDeleteClick(project: ProjectListItem) {
-  projectToDelete.value = project
-  showDeleteConfirm.value = true
-}
-
-async function handleDeleteConfirm() {
-  if (projectToDelete.value) {
-    await projectsStore.deleteProject(projectToDelete.value.id)
-  }
-  showDeleteConfirm.value = false
-  projectToDelete.value = null
-}
-
-async function handleDuplicate(project: ProjectListItem) {
-  await projectsStore.duplicateProject(project.id)
-}
-
-function startRenaming(project: ProjectListItem) {
-  editingProjectId.value = project.id
-  editingName.value = project.name
-}
-
-async function saveRename(project: ProjectListItem) {
-  if (editingName.value.trim() && editingName.value !== project.name) {
-    const index = projectsStore.projects.findIndex(p => p.id === project.id)
-    if (index !== -1) {
-      projectsStore.projects[index].name = editingName.value.trim()
-    }
-    
-    if (project.id === projectsStore.currentProjectId) {
-      projectsStore.renameProject(editingName.value.trim())
-    } else {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
-      await fetch(`${API_URL}/api/projects/${project.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
-        body: JSON.stringify({ name: editingName.value.trim() }),
-      })
-    }
-  }
-  editingProjectId.value = null
-  editingName.value = ''
-}
-
-function cancelRename() {
-  editingProjectId.value = null
-  editingName.value = ''
 }
 
 interface MenuItem {
@@ -203,11 +107,8 @@ const visibleItems = computed(() =>
   <Teleport to="body">
     <div class="drawer-overlay" @click.self="emit('close')">
       <div class="drawer-panel">
-        <!-- View container with sliding animation -->
-        <div class="views-container" :class="{ 'show-projects': currentView === 'projects' }">
-          
-          <!-- Main Menu View -->
-          <div class="view menu-view">
+        <!-- Menu content -->
+        <div class="menu-container">
             <!-- Header -->
             <div class="drawer-header">
               <div class="drawer-brand">
@@ -344,192 +245,21 @@ const visibleItems = computed(() =>
               </template>
             </div>
 
-            <!-- Footer -->
-            <div class="drawer-footer">
-              <template v-if="authStore.isAuthenticated">
-                <button class="menu-item logout-item" @click="handleLogout">
-                  <ToolIcon name="logOut" />
-                  <span>Sign out</span>
-                </button>
-              </template>
-              <div class="footer-meta">
-                <span class="version">Canvara v1.0</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Projects View -->
-          <div class="view projects-view">
-            <!-- Header with back button -->
-            <div class="drawer-header projects-header">
-              <button class="back-btn" @click="handleBackToMenu">
-                <ToolIcon name="chevronLeft" class="back-arrow" />
+          <!-- Footer -->
+          <div class="drawer-footer">
+            <template v-if="authStore.isAuthenticated">
+              <button class="menu-item logout-item" @click="handleLogout">
+                <ToolIcon name="logOut" />
+                <span>Sign out</span>
               </button>
-              <span class="projects-title">My Projects</span>
-              <button class="drawer-close" @click="emit('close')">
-                <ToolIcon name="close" />
-              </button>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-              <button class="quick-action-btn primary" @click="handleCreateProject">
-                <div class="quick-icon">
-                  <ToolIcon name="plus" />
-                </div>
-                <div class="quick-text">
-                  <span class="quick-label">Save current</span>
-                  <span class="quick-hint">Save to cloud</span>
-                </div>
-              </button>
-              <button class="quick-action-btn" @click="handleNewProject">
-                <div class="quick-icon">
-                  <ToolIcon name="file" />
-                </div>
-                <div class="quick-text">
-                  <span class="quick-label">New blank</span>
-                  <span class="quick-hint">Start fresh</span>
-                </div>
-              </button>
-            </div>
-
-            <!-- Projects list -->
-            <div class="projects-content">
-              <div v-if="projectsStore.isLoading" class="loading-state">
-                <div class="spinner" />
-                <span>Loading your projects...</span>
-              </div>
-
-              <div v-else-if="projectsStore.projects.length === 0" class="empty-state">
-                <div class="empty-illustration">
-                  <div class="empty-icon-wrap">
-                    <ToolIcon name="folderOpen" />
-                  </div>
-                  <div class="empty-shapes">
-                    <div class="shape s1"></div>
-                    <div class="shape s2"></div>
-                    <div class="shape s3"></div>
-                  </div>
-                </div>
-                <h4 class="empty-title">No projects yet</h4>
-                <p class="empty-hint">Save your current canvas to the cloud to access it anywhere</p>
-              </div>
-
-              <div v-else class="projects-list">
-                <div
-                  v-for="(project, index) in projectsStore.projects"
-                  :key="project.id"
-                  :class="['project-card', { active: project.id === projectsStore.currentProjectId }]"
-                  :style="{ '--i': index }"
-                  @click="handleLoadProject(project)"
-                >
-                  <!-- Thumbnail -->
-                  <div 
-                    class="project-thumbnail"
-                    :class="{ 'invert-for-theme': project.thumbnail && project.isDarkTheme !== appStore.isDarkMode }"
-                  >
-                    <img 
-                      v-if="project.thumbnail" 
-                      :src="project.thumbnail" 
-                      :alt="project.name"
-                      loading="lazy"
-                    />
-                    <div v-else class="thumbnail-placeholder">
-                      <div class="placeholder-shapes">
-                        <div class="ph-rect"></div>
-                        <div class="ph-circle"></div>
-                        <div class="ph-line"></div>
-                      </div>
-                    </div>
-                    <!-- Current badge -->
-                    <div v-if="project.id === projectsStore.currentProjectId" class="current-badge">
-                      <ToolIcon name="check" />
-                    </div>
-                  </div>
-
-                  <!-- Info -->
-                  <div class="project-info" @click.stop>
-                    <template v-if="editingProjectId === project.id">
-                      <input
-                        v-model="editingName"
-                        class="project-name-input"
-                        type="text"
-                        @keydown.enter="saveRename(project)"
-                        @keydown.escape="cancelRename"
-                        @blur="saveRename(project)"
-                        autofocus
-                      />
-                    </template>
-                    <template v-else>
-                      <span class="project-name" @click="handleLoadProject(project)">{{ project.name }}</span>
-                    </template>
-                    <span class="project-date">
-                      <ToolIcon name="clock" class="date-icon" />
-                      {{ formatDate(project.updatedAt) }}
-                    </span>
-                  </div>
-
-                  <!-- Actions -->
-                  <div class="project-actions" @click.stop>
-                    <button 
-                      class="project-action-btn" 
-                      v-tooltip.bottom="'Rename'"
-                      @click="startRenaming(project)"
-                    >
-                      <ToolIcon name="pencil" />
-                    </button>
-                    <button 
-                      class="project-action-btn" 
-                      v-tooltip.bottom="'Duplicate'"
-                      @click="handleDuplicate(project)"
-                    >
-                      <ToolIcon name="copy" />
-                    </button>
-                    <button 
-                      class="project-action-btn delete" 
-                      v-tooltip.bottom="'Delete'"
-                      @click="handleDeleteClick(project)"
-                    >
-                      <ToolIcon name="trash" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Current project footer -->
-            <div v-if="projectsStore.isCloudProject" class="current-project-bar">
-              <div class="current-icon">
-                <ToolIcon name="cloud" />
-              </div>
-              <div class="current-details">
-                <span class="current-name">{{ projectsStore.currentProjectName }}</span>
-                <span v-if="projectsStore.isSaving" class="save-status saving">
-                  <span class="sync-dot"></span>
-                  Saving...
-                </span>
-                <span v-else-if="projectsStore.lastSavedAt" class="save-status saved">
-                  <ToolIcon name="check" class="sync-icon" />
-                  Saved
-                </span>
-              </div>
+            </template>
+            <div class="footer-meta">
+              <span class="version">Canvara v1.0</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <!-- Delete confirmation modal -->
-    <ConfirmModal
-      v-if="showDeleteConfirm"
-      title="Delete project"
-      :message="`Are you sure you want to delete '${projectToDelete?.name}'? This action cannot be undone.`"
-      confirm-text="Delete"
-      cancel-text="Cancel"
-      :danger="true"
-      @confirm="handleDeleteConfirm"
-      @cancel="showDeleteConfirm = false"
-    />
   </Teleport>
 </template>
 
