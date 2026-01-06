@@ -25,10 +25,6 @@ onMounted(() => {
 
 // Free tier usage tracking
 const isFreeUser = computed(() => authStore.isAuthenticated && !authStore.isPaidUser)
-const hasUsesRemaining = computed(() => {
-  if (!isFreeUser.value) return true
-  return visualNotesStore.remainingUses === null || visualNotesStore.remainingUses > 0
-})
 const isOutOfUses = computed(() => isFreeUser.value && visualNotesStore.remainingUses === 0)
 
 // Tabs
