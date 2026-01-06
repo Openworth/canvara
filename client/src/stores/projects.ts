@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from './auth'
 import { useCanvasStore } from './canvas'
+import { useImageStore } from './images'
 import type { ExcalidrawElement, AppState } from '../types'
 
 export interface Project {
@@ -27,6 +28,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 export const useProjectsStore = defineStore('projects', () => {
   const authStore = useAuthStore()
   const canvasStore = useCanvasStore()
+  const imageStore = useImageStore()
 
   // State
   const projects = ref<ProjectListItem[]>([])
@@ -91,6 +93,14 @@ export const useProjectsStore = defineStore('projects', () => {
 
       const data = await response.json()
       const project = data.project as Project
+
+      // Preload any images in the project
+      const imageFileIds = project.elements
+        .filter(el => el.type === 'image' && el.fileId)
+        .map(el => el.fileId!)
+      if (imageFileIds.length > 0) {
+        imageStore.preloadImages(imageFileIds)
+      }
 
       // Load into canvas store
       canvasStore.setElements(project.elements)

@@ -32,6 +32,70 @@ onUnmounted(() => {
 type SheetState = 'collapsed' | 'peek' | 'expanded'
 const sheetState = ref<SheetState>('collapsed')
 
+// Drag state for bottom sheet
+const sheetRef = ref<HTMLElement | null>(null)
+const isDragging = ref(false)
+const dragStartY = ref(0)
+const dragCurrentY = ref(0)
+const sheetHeight = ref(0)
+
+// Calculate the drag offset (negative = dragging up, positive = dragging down)
+const dragOffset = computed(() => {
+  if (!isDragging.value) return 0
+  return dragCurrentY.value - dragStartY.value
+})
+
+// Touch handlers for drag gesture
+function handleTouchStart(e: TouchEvent) {
+  if (!sheetRef.value) return
+  isDragging.value = true
+  dragStartY.value = e.touches[0].clientY
+  dragCurrentY.value = e.touches[0].clientY
+  sheetHeight.value = sheetRef.value.offsetHeight
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (!isDragging.value) return
+  dragCurrentY.value = e.touches[0].clientY
+  // Prevent scrolling while dragging
+  e.preventDefault()
+}
+
+function handleTouchEnd() {
+  if (!isDragging.value) return
+  
+  const offset = dragOffset.value
+  const threshold = 50 // pixels to trigger state change
+  
+  if (sheetState.value === 'peek') {
+    if (offset < -threshold) {
+      // Dragged up - expand
+      sheetState.value = 'expanded'
+    } else if (offset > threshold) {
+      // Dragged down - dismiss
+      dismissSheet()
+    }
+  } else if (sheetState.value === 'expanded') {
+    if (offset > threshold) {
+      // Dragged down - go back to peek
+      sheetState.value = 'peek'
+    }
+  }
+  
+  isDragging.value = false
+  dragStartY.value = 0
+  dragCurrentY.value = 0
+}
+
+// Toggle between peek and expanded on drag handle click
+function toggleExpanded() {
+  if (sheetState.value === 'peek') {
+    sheetState.value = 'expanded'
+  } else if (sheetState.value === 'expanded') {
+    sheetState.value = 'peek'
+  }
+}
+
 // Dismiss the sheet completely by resetting to hand tool
 function dismissSheet() {
   sheetState.value = 'collapsed'
@@ -359,180 +423,233 @@ const opacity = computed(() =>
   </Transition>
 
   <!-- Mobile: Floating bottom sheet (non-modal, doesn't block canvas) -->
-  <div v-else-if="shouldShowSidebar" class="mobile-sheet">
+  <div 
+    v-else-if="shouldShowSidebar" 
+    ref="sheetRef"
+    class="mobile-sheet"
+    :class="{ 
+      'sheet-peek': sheetState === 'peek', 
+      'sheet-expanded': sheetState === 'expanded',
+      'is-dragging': isDragging
+    }"
+    :style="isDragging ? { transform: `translateY(${Math.max(0, dragOffset)}px)` } : undefined"
+  >
       <!-- Drag Handle -->
-      <div class="drag-handle">
+      <div 
+        class="drag-handle"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+        @click="toggleExpanded"
+      >
         <div class="drag-handle-bar"></div>
       </div>
       
       <!-- Header -->
-      <div class="sheet-header">
+      <div 
+        class="sheet-header"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @touchend="handleTouchEnd"
+      >
         <div class="header-title">
           <div class="header-icon">
             <ToolIcon :name="panelIcon" class="w-4 h-4" />
           </div>
           <h3 class="sheet-title">{{ panelTitle }}</h3>
         </div>
-        <button class="close-button" @click="dismissSheet" aria-label="Close">
-          <ToolIcon name="close" class="w-4 h-4" />
-        </button>
+        <div class="header-actions">
+          <button 
+            v-if="sheetState === 'peek'" 
+            class="expand-hint" 
+            @click.stop="sheetState = 'expanded'"
+          >
+            <span class="expand-text">More</span>
+            <svg class="expand-chevron" width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M3 7.5L6 4.5L9 7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <button class="close-button" @click.stop="dismissSheet" aria-label="Close">
+            <ToolIcon name="close" class="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       <!-- Content -->
-      <div class="sheet-content">
+      <div class="sheet-content" :class="{ 'content-expanded': sheetState === 'expanded' }">
         <!-- Text Options Panel -->
         <template v-if="panelMode === 'text'">
-          <TextOptions />
-          
-          <!-- Layer Controls for text elements (only when element is selected) -->
-          <div v-if="hasSelection" class="option-row">
-            <label class="section-label">Layers</label>
-            <div class="layer-buttons mobile">
-              <button
-                class="layer-btn"
-                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
-                title="Send to back"
-              >
-                <ToolIcon name="sendToBack" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
-                title="Send backward"
-              >
-                <ToolIcon name="sendBackward" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
-                title="Bring forward"
-              >
-                <ToolIcon name="bringForward" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
-                title="Bring to front"
-              >
-                <ToolIcon name="bringToFront" class="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </template>
-
-        <!-- Shape/Line Options Panel -->
-        <template v-else>
-          <!-- Color Row -->
-          <div class="color-row">
-            <div class="color-section">
-              <label class="section-label">Stroke</label>
+          <!-- Basic: Color only in peek mode -->
+          <div class="peek-content">
+            <div>
+              <label class="section-label">Color</label>
               <ColorPicker
                 :value="strokeColor"
                 @change="canvasStore.setStrokeColor($event)"
                 compact
               />
             </div>
-            <div v-if="panelMode === 'shape'" class="color-section">
-              <label class="section-label">Fill</label>
-              <ColorPicker
-                :value="backgroundColor"
-                @change="canvasStore.setBackgroundColor($event)"
+          </div>
+          
+          <!-- Expanded: Full text options -->
+          <div v-if="sheetState === 'expanded'" class="expanded-content">
+            <TextOptions />
+            
+            <!-- Layer Controls for text elements (only when element is selected) -->
+            <div v-if="hasSelection" class="option-row">
+              <label class="section-label">Layers</label>
+              <div class="layer-buttons mobile">
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                  title="Send to back"
+                >
+                  <ToolIcon name="sendToBack" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                  title="Send backward"
+                >
+                  <ToolIcon name="sendBackward" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                  title="Bring forward"
+                >
+                  <ToolIcon name="bringForward" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                  title="Bring to front"
+                >
+                  <ToolIcon name="bringToFront" class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- Shape/Line Options Panel -->
+        <template v-else>
+          <!-- Basic: Colors only (peek mode) -->
+          <div class="peek-content">
+            <div class="color-row">
+              <div class="color-section">
+                <label class="section-label">Stroke</label>
+                <ColorPicker
+                  :value="strokeColor"
+                  @change="canvasStore.setStrokeColor($event)"
+                  compact
+                />
+              </div>
+              <div v-if="panelMode === 'shape'" class="color-section">
+                <label class="section-label">Fill</label>
+                <ColorPicker
+                  :value="backgroundColor"
+                  @change="canvasStore.setBackgroundColor($event)"
+                  compact
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Expanded: All other options -->
+          <div v-if="sheetState === 'expanded'" class="expanded-content">
+            <!-- Stroke Width Row -->
+            <div class="option-row">
+              <label class="section-label">Width</label>
+              <StrokeOptions
+                :width="strokeWidth"
+                :style="strokeStyle"
+                @update:width="canvasStore.setStrokeWidth($event)"
+                @update:style="canvasStore.setStrokeStyle($event)"
                 compact
               />
             </div>
-          </div>
 
-          <!-- Stroke Width Row -->
-          <div class="option-row">
-            <label class="section-label">Width</label>
-            <StrokeOptions
-              :width="strokeWidth"
-              :style="strokeStyle"
-              @update:width="canvasStore.setStrokeWidth($event)"
-              @update:style="canvasStore.setStrokeStyle($event)"
-              compact
-            />
-          </div>
-
-          <!-- Fill Style (shapes only) -->
-          <div v-if="panelMode === 'shape'" class="option-row">
-            <label class="section-label">Style</label>
-            <FillOptions
-              :value="fillStyle"
-              @change="canvasStore.setFillStyle($event)"
-            />
-          </div>
-
-          <!-- Arrow Options -->
-          <div v-if="showArrowOptions" class="option-row">
-            <ArrowOptions />
-          </div>
-
-          <!-- Sloppiness -->
-          <div class="option-row">
-            <label class="section-label">Sloppiness</label>
-            <div class="segment-control">
-              <button
-                v-for="r in [0, 1, 2]"
-                :key="r"
-                class="segment-btn"
-                :class="{ 'active': roughness === r }"
-                @click="canvasStore.setRoughness(r)"
-              >
-                {{ r === 0 ? 'None' : r === 1 ? 'Low' : 'High' }}
-              </button>
-            </div>
-          </div>
-
-          <!-- Opacity -->
-          <div class="option-row opacity-row">
-            <label class="section-label">Opacity</label>
-            <div class="opacity-control">
-              <input
-                type="range"
-                min="10"
-                max="100"
-                step="10"
-                :value="opacity"
-                @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
-                class="opacity-slider"
+            <!-- Fill Style (shapes only) -->
+            <div v-if="panelMode === 'shape'" class="option-row">
+              <label class="section-label">Style</label>
+              <FillOptions
+                :value="fillStyle"
+                @change="canvasStore.setFillStyle($event)"
               />
-              <span class="opacity-value">{{ opacity }}%</span>
             </div>
-          </div>
 
-          <!-- Layer Controls (only when element is selected) -->
-          <div v-if="hasSelection" class="option-row">
-            <label class="section-label">Layers</label>
-            <div class="layer-buttons mobile">
-              <button
-                class="layer-btn"
-                @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
-                title="Send to back"
-              >
-                <ToolIcon name="sendToBack" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
-                title="Send backward"
-              >
-                <ToolIcon name="sendBackward" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
-                title="Bring forward"
-              >
-                <ToolIcon name="bringForward" class="w-4 h-4" />
-              </button>
-              <button
-                class="layer-btn"
-                @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
-                title="Bring to front"
-              >
-                <ToolIcon name="bringToFront" class="w-4 h-4" />
-              </button>
+            <!-- Arrow Options -->
+            <div v-if="showArrowOptions" class="option-row">
+              <ArrowOptions />
+            </div>
+
+            <!-- Sloppiness -->
+            <div class="option-row">
+              <label class="section-label">Sloppiness</label>
+              <div class="segment-control">
+                <button
+                  v-for="r in [0, 1, 2]"
+                  :key="r"
+                  class="segment-btn"
+                  :class="{ 'active': roughness === r }"
+                  @click="canvasStore.setRoughness(r)"
+                >
+                  {{ r === 0 ? 'None' : r === 1 ? 'Low' : 'High' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Opacity -->
+            <div class="option-row opacity-row">
+              <label class="section-label">Opacity</label>
+              <div class="opacity-control">
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="10"
+                  :value="opacity"
+                  @input="canvasStore.setOpacity(Number(($event.target as HTMLInputElement).value))"
+                  class="opacity-slider"
+                />
+                <span class="opacity-value">{{ opacity }}%</span>
+              </div>
+            </div>
+
+            <!-- Layer Controls (only when element is selected) -->
+            <div v-if="hasSelection" class="option-row">
+              <label class="section-label">Layers</label>
+              <div class="layer-buttons mobile">
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.sendToBack([...canvasStore.selectedElementIds])"
+                  title="Send to back"
+                >
+                  <ToolIcon name="sendToBack" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.sendBackward([...canvasStore.selectedElementIds])"
+                  title="Send backward"
+                >
+                  <ToolIcon name="sendBackward" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.bringForward([...canvasStore.selectedElementIds])"
+                  title="Bring forward"
+                >
+                  <ToolIcon name="bringForward" class="w-4 h-4" />
+                </button>
+                <button
+                  class="layer-btn"
+                  @click="canvasStore.bringToFront([...canvasStore.selectedElementIds])"
+                  title="Bring to front"
+                >
+                  <ToolIcon name="bringToFront" class="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </template>
@@ -839,12 +956,27 @@ const opacity = computed(() =>
   border-top: 1px solid var(--color-toolbar-border);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-  animation: sheetSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 55vh;
   overflow: visible;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), max-height 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform, max-height;
+}
+
+/* Peek state - minimal height, just colors */
+.mobile-sheet.sheet-peek {
+  animation: sheetSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Expanded state - full height */
+.mobile-sheet.sheet-expanded {
+  max-height: 65vh;
+}
+
+/* Disable transition while dragging for immediate feedback */
+.mobile-sheet.is-dragging {
+  transition: none;
 }
 
 @keyframes sheetSlideUp {
@@ -866,15 +998,28 @@ const opacity = computed(() =>
 .drag-handle {
   display: flex;
   justify-content: center;
-  padding: 6px 0 2px;
+  padding: 8px 0 4px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 .drag-handle-bar {
-  width: 32px;
-  height: 4px;
+  width: 36px;
+  height: 5px;
   background: var(--color-toolbar-border);
-  border-radius: 2px;
-  opacity: 0.4;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.drag-handle:hover .drag-handle-bar,
+.drag-handle:active .drag-handle-bar {
+  opacity: 0.8;
+  background: var(--color-text-tertiary);
 }
 
 /* Header */
@@ -883,6 +1028,12 @@ const opacity = computed(() =>
   align-items: center;
   justify-content: space-between;
   padding: 2px 12px 10px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheet-header:active {
+  cursor: grabbing;
 }
 
 .header-title {
@@ -914,6 +1065,44 @@ const opacity = computed(() =>
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expand-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: var(--color-accent-glow);
+  color: var(--color-accent-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.expand-hint:hover {
+  background: var(--color-accent-primary);
+  color: white;
+}
+
+.expand-hint:active {
+  transform: scale(0.95);
+}
+
+.expand-text {
+  letter-spacing: 0.02em;
+}
+
+.expand-chevron {
+  transition: transform 0.2s ease;
+}
+
 .close-button {
   display: flex;
   align-items: center;
@@ -942,6 +1131,40 @@ const opacity = computed(() =>
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.sheet-content.content-expanded {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Peek content - always visible */
+.peek-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Expanded content - only visible when expanded */
+.expanded-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-toolbar-border);
+  margin-top: 4px;
+  animation: fadeSlideIn 0.25s ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Section Labels */

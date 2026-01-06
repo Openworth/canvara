@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useCanvasStore } from '../../stores/canvas'
 import { useCollaborationStore } from '../../stores/collaboration'
 import { useAppStore } from '../../stores/app'
+import { useImageStore } from '../../stores/images'
 import { Renderer } from '../../engine/renderer'
 import { screenToCanvas, getCommonBounds, normalizeElement, isPointInRect, rotatePoint } from '../../engine/math'
 import { getElementAtPoint, getElementsInBounds, getTransformHandleAtPoint, getLineEndpointAtPoint, getCursorForHandle } from '../../engine/hitTest'
@@ -15,6 +16,7 @@ import type { ExcalidrawElement, Point, TransformHandle, PointBinding } from '..
 const canvasStore = useCanvasStore()
 const collaborationStore = useCollaborationStore()
 const appStore = useAppStore()
+const imageStore = useImageStore()
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -114,6 +116,10 @@ onMounted(() => {
   if (!canvasRef.value || !containerRef.value) return
 
   renderer = new Renderer(canvasRef.value)
+  
+  // Set image getter for rendering images
+  renderer.setImageGetter((fileId: string) => imageStore.getImage(fileId))
+  
   resizeCanvas()
 
   // Start render loop
@@ -559,6 +565,110 @@ function handleTextCancel() {
   // Keep text tool selected so user can try again
 }
 
+// Create image element from file (used by drag-and-drop)
+async function createImageElement(file: File, position: Point | null) {
+  // Get image dimensions before upload
+  const dimensions = await imageStore.getImageDimensions(file)
+  
+  // Upload image to server
+  const result = await imageStore.uploadImage(file)
+  if (!result) {
+    console.error('Failed to upload image')
+    return
+  }
+  
+  // Use provided position or center of viewport
+  let x: number, y: number
+  if (position) {
+    x = position.x
+    y = position.y
+  } else {
+    // Center in viewport
+    const rect = canvasRef.value?.getBoundingClientRect()
+    if (rect) {
+      const centerScreen = { x: rect.width / 2, y: rect.height / 2 }
+      const centerCanvas = screenToCanvas(
+        centerScreen.x,
+        centerScreen.y,
+        canvasStore.appState.scrollX,
+        canvasStore.appState.scrollY,
+        canvasStore.appState.zoom.value
+      )
+      x = centerCanvas.x - dimensions.width / 2
+      y = centerCanvas.y - dimensions.height / 2
+    } else {
+      x = 100
+      y = 100
+    }
+  }
+  
+  // Snap to grid if enabled
+  const snapEnabled = canvasStore.appState.snapToGrid && canvasStore.appState.gridSize
+  if (snapEnabled) {
+    x = canvasStore.snapValueToGrid(x)
+    y = canvasStore.snapValueToGrid(y)
+  }
+  
+  // Create image element
+  const element = canvasStore.createElement('image', x, y)
+  element.width = dimensions.width
+  element.height = dimensions.height
+  element.fileId = result.fileId
+  element.status = 'saved'
+  
+  canvasStore.addElement(element)
+  canvasStore.selectElement(element.id)
+  
+  // Switch to selection tool after adding image
+  canvasStore.setActiveTool(isMobile.value ? 'hand' : 'selection')
+}
+
+// Drag and drop handlers
+function handleDragOver(e: DragEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+function handleDragEnter(e: DragEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+function handleDragLeave(e: DragEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+}
+
+async function handleDrop(e: DragEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+  
+  // Get drop position in canvas coordinates
+  const rect = canvasRef.value?.getBoundingClientRect()
+  if (!rect) return
+  
+  const dropPoint = screenToCanvas(
+    e.clientX - rect.left,
+    e.clientY - rect.top,
+    canvasStore.appState.scrollX,
+    canvasStore.appState.scrollY,
+    canvasStore.appState.zoom.value
+  )
+  
+  // Process each image file
+  for (const file of Array.from(files)) {
+    if (file.type.startsWith('image/')) {
+      await createImageElement(file, dropPoint)
+    }
+  }
+}
+
 function handleDrawStart(point: Point) {
   isDrawing.value = true
   const tool = canvasStore.activeTool
@@ -919,24 +1029,43 @@ function handleResize(point: Point) {
       return
   }
 
-  // Constrain to square when shift is held (for corner handles only)
+  // Constrain aspect ratio when shift is held (for corner handles only)
   if (isShiftPressed.value && ['nw', 'ne', 'se', 'sw'].includes(activeHandle.value)) {
-    const maxDimension = Math.max(Math.abs(newWidth), Math.abs(newHeight))
     const widthSign = newWidth >= 0 ? 1 : -1
     const heightSign = newHeight >= 0 ? 1 : -1
     
-    // Adjust position for handles that move the origin
-    if (activeHandle.value === 'nw') {
-      newX = bounds.x + bounds.width - widthSign * maxDimension
-      newY = bounds.y + bounds.height - heightSign * maxDimension
-    } else if (activeHandle.value === 'ne') {
-      newY = bounds.y + bounds.height - heightSign * maxDimension
-    } else if (activeHandle.value === 'sw') {
-      newX = bounds.x + bounds.width - widthSign * maxDimension
+    // Check if resizing image elements - maintain original aspect ratio
+    const selectedElements = canvasStore.selectedElements
+    const isImageResize = selectedElements.length === 1 && selectedElements[0].type === 'image'
+    
+    if (isImageResize) {
+      // For images: maintain original aspect ratio
+      const originalAspect = bounds.width / bounds.height
+      const currentAspect = Math.abs(newWidth) / Math.abs(newHeight)
+      
+      if (currentAspect > originalAspect) {
+        // Width is dominant, adjust height to match
+        newHeight = heightSign * Math.abs(newWidth) / originalAspect
+      } else {
+        // Height is dominant, adjust width to match
+        newWidth = widthSign * Math.abs(newHeight) * originalAspect
+      }
+    } else {
+      // For other shapes: constrain to square (1:1)
+      const maxDimension = Math.max(Math.abs(newWidth), Math.abs(newHeight))
+      newWidth = widthSign * maxDimension
+      newHeight = heightSign * maxDimension
     }
     
-    newWidth = widthSign * maxDimension
-    newHeight = heightSign * maxDimension
+    // Adjust position for handles that move the origin
+    if (activeHandle.value === 'nw') {
+      newX = bounds.x + bounds.width - widthSign * Math.abs(newWidth)
+      newY = bounds.y + bounds.height - heightSign * Math.abs(newHeight)
+    } else if (activeHandle.value === 'ne') {
+      newY = bounds.y + bounds.height - heightSign * Math.abs(newHeight)
+    } else if (activeHandle.value === 'sw') {
+      newX = bounds.x + bounds.width - widthSign * Math.abs(newWidth)
+    }
   }
 
   // Snap to grid if enabled
@@ -1285,6 +1414,11 @@ function handleKeyDown(e: KeyboardEvent) {
       case 't':
         canvasStore.setActiveTool('text')
         break
+      case '9':
+      case 'i':
+        // Dispatch event to open image picker (handled by Toolbar)
+        window.dispatchEvent(new CustomEvent('open-image-picker'))
+        break
       case 'e':
         canvasStore.setActiveTool('eraser')
         break
@@ -1382,6 +1516,10 @@ function handleDoubleClick(e: MouseEvent) {
     ref="containerRef"
     class="absolute inset-0 overflow-hidden"
     :style="{ cursor: cursorStyle }"
+    @dragover="handleDragOver"
+    @dragenter="handleDragEnter"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
   >
     <canvas
       ref="canvasRef"

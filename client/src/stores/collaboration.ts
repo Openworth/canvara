@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { nanoid } from 'nanoid'
 import { useCanvasStore } from './canvas'
 import { useAppStore } from './app'
+import { useImageStore } from './images'
 import type { Collaborator, Point, ExcalidrawElement, WSMessage } from '../types'
 
 const COLORS = [
@@ -11,9 +12,17 @@ const COLORS = [
   '#f08c00', '#e8590c',
 ]
 
+// Helper to extract image fileIds from elements
+function extractImageFileIds(elements: ExcalidrawElement[]): string[] {
+  return elements
+    .filter(el => el.type === 'image' && el.fileId)
+    .map(el => el.fileId!)
+}
+
 export const useCollaborationStore = defineStore('collaboration', () => {
   const canvasStore = useCanvasStore()
   const appStore = useAppStore()
+  const imageStore = useImageStore()
   
   // WebSocket connection
   const ws = ref<WebSocket | null>(null)
@@ -126,6 +135,14 @@ export const useCollaborationStore = defineStore('collaboration', () => {
         // Track if this is a join (not creator) to center on host cursor
         const isJoiningAsGuest = !isRoomCreator.value
         
+        // Preload any images in the received elements
+        if (payload.elements) {
+          const imageFileIds = extractImageFileIds(payload.elements)
+          if (imageFileIds.length > 0) {
+            imageStore.preloadImages(imageFileIds)
+          }
+        }
+        
         // If room creator, merge server elements with our existing elements
         // Otherwise, just set the elements from server
         if (isRoomCreator.value && pendingElements.value.length > 0) {
@@ -183,6 +200,13 @@ export const useCollaborationStore = defineStore('collaboration', () => {
       
       case 'update': {
         const payload = message.payload as { elements: ExcalidrawElement[] }
+        
+        // Preload any new images in the update
+        const imageFileIds = extractImageFileIds(payload.elements)
+        if (imageFileIds.length > 0) {
+          imageStore.preloadImages(imageFileIds)
+        }
+        
         canvasStore.mergeElements(payload.elements)
         break
       }

@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCanvasStore } from '../stores/canvas'
 import { useCollaborationStore } from '../stores/collaboration'
+import { useImageStore } from '../stores/images'
 import CanvasContainer from '../components/canvas/CanvasContainer.vue'
 import Toolbar from '../components/toolbar/Toolbar.vue'
 import Sidebar from '../components/sidebar/Sidebar.vue'
@@ -13,6 +14,7 @@ import ZoomControls from '../components/ui/ZoomControls.vue'
 const route = useRoute()
 const canvasStore = useCanvasStore()
 const collaborationStore = useCollaborationStore()
+const imageStore = useImageStore()
 
 onMounted(() => {
   const roomId = route.params.roomId as string | undefined
@@ -24,6 +26,14 @@ onMounted(() => {
   // Load saved canvas state if no room
   if (!roomId) {
     canvasStore.loadFromLocalStorage()
+    
+    // Preload any images from the saved canvas
+    const imageFileIds = canvasStore.elements
+      .filter(el => el.type === 'image' && el.fileId)
+      .map(el => el.fileId!)
+    if (imageFileIds.length > 0) {
+      imageStore.preloadImages(imageFileIds)
+    }
     
     // Center on content after DOM is ready (if there are elements)
     if (canvasStore.elements.length > 0) {

@@ -872,7 +872,3 @@ Would love to chat about how you handled [specific technical challenge].
 5. **Local-first** - privacy-conscious users love this
 
 ---
-
-## Timeline
-
-| Week | Focus ||------|-------|| 1 | Product Hunt + Hacker News launch || 2 | Reddit campaign + first Dev.to article || 3 | Template gallery + Twitter presence || 4 | YouTube content + Discord communities |

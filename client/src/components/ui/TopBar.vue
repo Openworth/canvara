@@ -142,18 +142,6 @@ onUnmounted(() => {
         >
           <ToolIcon name="keyboard" class="w-4 h-4" />
         </button>
-
-        <!-- Theme toggle -->
-        <button
-          class="topbar-ghost-btn"
-          v-tooltip.bottom="'Toggle dark mode'"
-          @click="appStore.toggleDarkMode()"
-        >
-          <ToolIcon
-            :name="appStore.isDarkMode ? 'sun' : 'moon'"
-            class="w-4 h-4"
-          />
-        </button>
       </div>
 
       <!-- Share button - separated to the right -->

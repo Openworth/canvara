@@ -6,17 +6,26 @@ import { getCommonBounds, canvasToScreen } from './math'
 const HANDLE_SIZE = 8
 const ROTATION_HANDLE_OFFSET = 25
 
+// Type for image getter function
+type ImageGetter = (fileId: string) => HTMLImageElement | null
+
 export class Renderer {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private rc: RoughCanvas
   private dpr: number
+  private getImageFn: ImageGetter | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
     this.ctx = canvas.getContext('2d')!
     this.rc = rough.canvas(canvas)
     this.dpr = window.devicePixelRatio || 1
+  }
+
+  // Set the image getter function (from image store)
+  setImageGetter(fn: ImageGetter) {
+    this.getImageFn = fn
   }
 
   // Resize canvas to match container
@@ -425,22 +434,57 @@ export class Renderer {
   }
 
   private renderImage(element: ExcalidrawElement) {
-    // Image rendering would require loading and caching images
-    // For now, render a placeholder
-    this.ctx.save()
-    this.ctx.fillStyle = '#f0f0f0'
-    this.ctx.fillRect(element.x, element.y, element.width, element.height)
-    this.ctx.strokeStyle = '#ccc'
-    this.ctx.strokeRect(element.x, element.y, element.width, element.height)
+    const { x, y, width, height, fileId } = element
     
-    // Draw X pattern
-    this.ctx.strokeStyle = '#ddd'
-    this.ctx.beginPath()
-    this.ctx.moveTo(element.x, element.y)
-    this.ctx.lineTo(element.x + element.width, element.y + element.height)
-    this.ctx.moveTo(element.x + element.width, element.y)
-    this.ctx.lineTo(element.x, element.y + element.height)
-    this.ctx.stroke()
+    this.ctx.save()
+    
+    // Try to get the image from cache
+    let img: HTMLImageElement | null = null
+    if (fileId && this.getImageFn) {
+      img = this.getImageFn(fileId)
+    }
+    
+    if (img && img.complete && img.naturalWidth > 0) {
+      // Draw the actual image
+      this.ctx.drawImage(img, x, y, width, height)
+    } else {
+      // Render loading placeholder
+      this.ctx.fillStyle = '#f8f9fa'
+      this.ctx.fillRect(x, y, width, height)
+      this.ctx.strokeStyle = '#dee2e6'
+      this.ctx.lineWidth = 1
+      this.ctx.strokeRect(x, y, width, height)
+      
+      // Draw loading indicator (centered image icon)
+      const iconSize = Math.min(40, width * 0.3, height * 0.3)
+      const iconX = x + (width - iconSize) / 2
+      const iconY = y + (height - iconSize) / 2
+      
+      this.ctx.strokeStyle = '#adb5bd'
+      this.ctx.lineWidth = 2
+      this.ctx.lineCap = 'round'
+      this.ctx.lineJoin = 'round'
+      
+      // Simple image icon (mountain/landscape)
+      this.ctx.beginPath()
+      // Rectangle frame
+      this.ctx.rect(iconX, iconY, iconSize, iconSize)
+      this.ctx.stroke()
+      
+      // Mountain shape
+      this.ctx.beginPath()
+      this.ctx.moveTo(iconX + iconSize * 0.15, iconY + iconSize * 0.75)
+      this.ctx.lineTo(iconX + iconSize * 0.35, iconY + iconSize * 0.45)
+      this.ctx.lineTo(iconX + iconSize * 0.55, iconY + iconSize * 0.65)
+      this.ctx.lineTo(iconX + iconSize * 0.75, iconY + iconSize * 0.35)
+      this.ctx.lineTo(iconX + iconSize * 0.85, iconY + iconSize * 0.75)
+      this.ctx.stroke()
+      
+      // Sun circle
+      this.ctx.beginPath()
+      this.ctx.arc(iconX + iconSize * 0.7, iconY + iconSize * 0.3, iconSize * 0.08, 0, Math.PI * 2)
+      this.ctx.stroke()
+    }
     
     this.ctx.restore()
   }

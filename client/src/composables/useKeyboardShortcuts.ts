@@ -133,7 +133,8 @@ export function useKeyboardShortcuts() {
       case '9':
       case 'i':
       case 'I':
-        canvasStore.setActiveTool('image')
+        // Dispatch event to open image picker (handled by Toolbar)
+        window.dispatchEvent(new CustomEvent('open-image-picker'))
         break
       case 'e':
       case 'E':

@@ -429,11 +429,46 @@ const features = [
    RESPONSIVE - Adjust for smaller screens
    ============================================ */
 
-/* Hide arrow hints on smaller screens */
+/* Reposition arrow hints for tablet/mobile (bottom toolbar, left sidebar) */
 @media (max-width: 900px) {
-  .hint-toolbar,
+  /* Toolbar hint: positioned bottom center, arrow pointing down to bottom toolbar */
+  .hint-toolbar {
+    left: 50%;
+    top: auto;
+    bottom: 110px;
+    transform: translateX(-50%);
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .hint-toolbar .hint-text {
+    order: -1; /* Text above arrow */
+    text-align: center;
+    margin-bottom: 30px;
+  }
+  
+  .hint-toolbar .hint-arrow {
+    /* Rotate arrow to point down - counterclockwise so arrowhead ends at bottom */
+    transform: rotate(-90deg);
+  }
+  
+  /* Collab hint: positioned top-left, pointing to sidebar toggle */
   .hint-collab {
-    display: none;
+    left: 120px;
+    right: auto;
+    top: 120px;
+  }
+  
+  .hint-collab .hint-text-right {
+    text-align: left;
+  }
+  
+  .hint-collab .hint-arrow-curved {
+    /* Mirror horizontally to point top-left instead of top-right */
+    transform: scaleX(-1);
+    left: -55px;
+    right: auto;
   }
 }
 

@@ -2,11 +2,16 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAppStore } from '../../stores/app'
+import { useImageStore } from '../../stores/images'
 import type { Tool } from '../../types'
 import ToolIcon from './ToolIcon.vue'
 
 const canvasStore = useCanvasStore()
 const appStore = useAppStore()
+const imageStore = useImageStore()
+
+// File input for image upload
+const imageInputRef = ref<HTMLInputElement | null>(null)
 
 // Mobile detection
 const isMobile = ref(false)
@@ -16,13 +21,20 @@ function checkMobile() {
   isMobile.value = window.innerWidth < 768
 }
 
+// Handle keyboard shortcut for image tool
+function handleImageShortcut() {
+  imageInputRef.value?.click()
+}
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+  window.addEventListener('open-image-picker', handleImageShortcut)
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('open-image-picker', handleImageShortcut)
 })
 
 interface ToolConfig {
@@ -51,6 +63,7 @@ const lineTools: ToolConfig[] = [
 const drawingTools: ToolConfig[] = [
   { id: 'freedraw', icon: 'pencil', label: 'Draw', shortcut: '7 or P' },
   { id: 'text', icon: 'text', label: 'Text', shortcut: '8 or T' },
+  { id: 'image', icon: 'image', label: 'Image', shortcut: '9 or I' },
 ]
 
 const utilityTools: ToolConfig[] = [
@@ -71,6 +84,7 @@ const primaryTools: ToolConfig[] = [
 const secondaryTools: ToolConfig[] = [
   { id: 'freedraw', icon: 'pencil', label: 'Draw', shortcut: '7 or P' },
   { id: 'text', icon: 'text', label: 'Text', shortcut: '8 or T' },
+  { id: 'image', icon: 'image', label: 'Image', shortcut: '9 or I' },
   { id: 'diamond', icon: 'diamond', label: 'Diamond', shortcut: '4 or D' },
   { id: 'line', icon: 'line', label: 'Line', shortcut: '6 or L' },
   { id: 'eraser', icon: 'eraser', label: 'Eraser', shortcut: 'E' },
@@ -91,8 +105,60 @@ const isSecondaryToolActive = computed(() =>
 )
 
 function selectTool(tool: Tool) {
+  if (tool === 'image') {
+    // For image tool, open file picker immediately
+    imageInputRef.value?.click()
+    showMoreTools.value = false
+    return
+  }
   canvasStore.setActiveTool(tool)
   showMoreTools.value = false
+}
+
+// Handle image file selection
+async function handleImageSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  
+  if (!file) return
+  
+  // Get image dimensions before upload
+  const dimensions = await imageStore.getImageDimensions(file)
+  
+  // Upload image to server
+  const result = await imageStore.uploadImage(file)
+  if (!result) {
+    console.error('Failed to upload image')
+    input.value = ''
+    return
+  }
+  
+  // Create image at center of viewport
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const zoom = canvasStore.appState.zoom.value
+  const scrollX = canvasStore.appState.scrollX
+  const scrollY = canvasStore.appState.scrollY
+  
+  // Calculate center of canvas in canvas coordinates
+  const centerX = (viewportWidth / 2 - scrollX) / zoom - dimensions.width / 2
+  const centerY = (viewportHeight / 2 - scrollY) / zoom - dimensions.height / 2
+  
+  // Create image element
+  const element = canvasStore.createElement('image', centerX, centerY)
+  element.width = dimensions.width
+  element.height = dimensions.height
+  element.fileId = result.fileId
+  element.status = 'saved'
+  
+  canvasStore.addElement(element)
+  canvasStore.selectElement(element.id)
+  
+  // Switch to selection tool
+  canvasStore.setActiveTool(isMobile.value ? 'hand' : 'selection')
+  
+  // Reset input so the same file can be selected again
+  input.value = ''
 }
 
 function toggleMoreTools() {
@@ -338,12 +404,25 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- Hidden file input for image upload -->
+  <input
+    ref="imageInputRef"
+    type="file"
+    accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+    class="hidden"
+    @change="handleImageSelect"
+  />
 </template>
 
 <style scoped>
 /* ============================================
    DESKTOP TOOLBAR
    ============================================ */
+
+.hidden {
+  display: none;
+}
 
 .toolbar-container {
   position: absolute;
