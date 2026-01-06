@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useProjectsStore, type ProjectListItem } from '../../stores/projects'
 import { useFoldersStore } from '../../stores/folders'
 import { useTagsStore } from '../../stores/tags'
 import { useAuthStore } from '../../stores/auth'
+import { useAppStore } from '../../stores/app'
 import type { Folder, ProjectView } from '../../types'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ConfirmModal from '../modals/ConfirmModal.vue'
@@ -22,6 +23,19 @@ const projectsStore = useProjectsStore()
 const foldersStore = useFoldersStore()
 const tagsStore = useTagsStore()
 const authStore = useAuthStore()
+const appStore = useAppStore()
+
+// Animation state
+const isVisible = ref(false)
+
+// Check if a thumbnail needs to be inverted to match current theme
+function shouldInvertThumbnail(project: ProjectListItem): boolean {
+  // If no thumbnail or no theme info, don't invert
+  if (!project.thumbnail) return false
+  
+  // Invert if project theme doesn't match current app theme
+  return project.isDarkTheme !== appStore.isDarkMode
+}
 
 // UI State
 const showDeleteConfirm = ref(false)
@@ -40,12 +54,32 @@ const contextMenuProject = ref<ProjectListItem | null>(null)
 const contextMenuPosition = ref({ x: 0, y: 0 })
 const draggingProjectId = ref<string | null>(null)
 
+// Handle escape key
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && !showDeleteConfirm.value && !showCreateFolderModal.value && !showManageTagsModal.value && !showTagPicker.value) {
+    emit('close')
+  }
+}
+
 onMounted(async () => {
+  // Trigger entrance animation
+  requestAnimationFrame(() => {
+    isVisible.value = true
+  })
+  
+  // Add keyboard listener
+  document.addEventListener('keydown', handleKeydown)
+  
   await Promise.all([
-    projectsStore.fetchProjects(),
+    // Fetch all projects including trashed and archived so filtering works properly
+    projectsStore.fetchProjects({ includeAll: true }),
     foldersStore.fetchFolders(),
     tagsStore.fetchTags(),
   ])
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 
 // Computed
@@ -325,8 +359,8 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 </script>
 
 <template>
-  <div class="drawer-overlay" @click.self="emit('close')">
-    <div class="drawer">
+  <div class="drawer-overlay" :class="{ visible: isVisible }" @click.self="emit('close')">
+    <div class="drawer" :class="{ visible: isVisible }">
       <!-- Sidebar -->
       <div class="sidebar">
         <div class="sidebar-header">
@@ -439,7 +473,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
       <div class="main-content">
         <!-- Header -->
         <div class="content-header">
-          <button class="back-btn mobile-only" @click="emit('close')">
+          <button class="back-btn mobile-only" @click="emit('close')" aria-label="Go back">
             <ToolIcon name="chevronLeft" />
           </button>
 
@@ -448,7 +482,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
             <h2>{{ currentViewTitle }}</h2>
           </div>
 
-          <button class="close-btn" @click="emit('close')">
+          <button class="close-btn" @click="emit('close')" aria-label="Close">
             <ToolIcon name="close" />
           </button>
         </div>
@@ -585,7 +619,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
               @dragend="handleDragEnd"
             >
               <!-- Thumbnail -->
-              <div class="project-thumbnail" :class="{ dark: project.isDarkTheme }">
+              <div class="project-thumbnail" :class="{ dark: project.isDarkTheme, 'invert-for-theme': shouldInvertThumbnail(project) }">
                 <img 
                   v-if="project.thumbnail" 
                   :src="project.thumbnail" 
@@ -733,7 +767,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
               @dragend="handleDragEnd"
             >
               <!-- Mini thumbnail -->
-              <div class="list-thumbnail" :class="{ dark: project.isDarkTheme }">
+              <div class="list-thumbnail" :class="{ dark: project.isDarkTheme, 'invert-for-theme': shouldInvertThumbnail(project) }">
                 <img v-if="project.thumbnail" :src="project.thumbnail" :alt="project.name" />
                 <ToolIcon v-else name="file" />
               </div>
@@ -926,190 +960,324 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 </template>
 
 <style scoped>
+/* ============================================
+   OVERLAY
+   ============================================ */
 .drawer-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
   display: flex;
   justify-content: flex-start;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.drawer-overlay.visible {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
 }
 
+.dark .drawer-overlay.visible {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================
+   DRAWER
+   ============================================ */
 .drawer {
   display: flex;
-  width: 720px;
+  width: 740px;
   max-width: 100vw;
   height: 100%;
   background: var(--color-toolbar-bg-solid);
-  animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 8px 0 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 12px 0 48px -12px rgba(0, 0, 0, 0.25);
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-@keyframes slideIn {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+.drawer.visible {
+  transform: translateX(0);
 }
 
-/* Sidebar */
+.dark .drawer {
+  box-shadow: 12px 0 48px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
 .sidebar {
   width: 220px;
   border-right: 1px solid var(--color-toolbar-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  background: linear-gradient(180deg, 
+    rgba(99, 102, 241, 0.02) 0%, 
+    transparent 100%
+  );
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 18px 16px;
   border-bottom: 1px solid var(--color-toolbar-border);
 }
 
 .sidebar-header h3 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--color-text-primary);
+  letter-spacing: -0.3px;
 }
 
 .icon-btn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .icon-btn:hover {
   background: var(--color-toolbar-hover);
-  color: var(--color-text-primary);
+  color: var(--color-accent-primary);
+  transform: scale(1.05);
+}
+
+.icon-btn:active {
+  transform: scale(0.95);
 }
 
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px 8px;
   display: flex;
   flex-direction: column;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
 }
 
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 2px;
+}
+
+/* ============================================
+   NAV ITEMS
+   ============================================ */
 .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-primary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
+  position: relative;
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 0;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+  border-radius: 0 2px 2px 0;
+  transition: height 0.2s ease;
 }
 
 .nav-item:hover {
   background: var(--color-toolbar-hover);
 }
 
+.nav-item:hover::before {
+  height: 50%;
+}
+
+.nav-item:active {
+  transform: scale(0.98);
+}
+
 .nav-item.active {
-  background: var(--color-toolbar-active);
-  color: var(--color-accent-primary);
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.18) 0%, 
+    rgba(99, 102, 241, 0.10) 100%
+  );
+  color: #818cf8;
+  font-weight: 600;
+}
+
+.dark .nav-item.active {
+  color: #a5b4fc;
+}
+
+.nav-item.active::before {
+  height: 65%;
+  width: 4px;
 }
 
 .nav-item :deep(svg) {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover :deep(svg) {
+  color: var(--color-accent-primary);
+}
+
+.nav-item.active :deep(svg) {
+  color: #818cf8;
+}
+
+.dark .nav-item.active :deep(svg) {
+  color: #a5b4fc;
 }
 
 .nav-item .count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--color-text-tertiary);
   background: var(--color-toolbar-hover);
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.nav-item.active .count {
+  background: rgba(99, 102, 241, 0.25);
+  color: #818cf8;
+}
+
+.dark .nav-item.active .count {
+  background: rgba(165, 180, 252, 0.2);
+  color: #a5b4fc;
 }
 
 .nav-section {
   margin-top: 16px;
-  padding-top: 12px;
+  padding-top: 14px;
   border-top: 1px solid var(--color-toolbar-border);
 }
 
 .nav-section.bottom {
   margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-toolbar-border);
 }
 
 .nav-section-header {
-  padding: 0 10px 8px;
+  padding: 0 12px 10px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
   color: var(--color-text-tertiary);
 }
 
 .nav-item.add-folder {
   color: var(--color-text-secondary);
+  border: 1px dashed var(--color-toolbar-border);
+  background: transparent;
+  margin-top: 4px;
+}
+
+.nav-item.add-folder::before {
+  display: none;
 }
 
 .nav-item.add-folder:hover {
   color: var(--color-accent-primary);
+  border-color: var(--color-accent-primary);
+  background: rgba(99, 102, 241, 0.05);
 }
 
-/* Main Content */
+.nav-item.add-folder :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: linear-gradient(180deg, 
+    transparent 0%, 
+    rgba(99, 102, 241, 0.01) 100%
+  );
 }
 
 .content-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--color-toolbar-border);
+  background: linear-gradient(180deg, 
+    rgba(99, 102, 241, 0.03) 0%, 
+    transparent 100%
+  );
 }
 
 .header-title {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .folder-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .header-title h2 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--color-text-primary);
+  letter-spacing: -0.3px;
 }
 
 .back-btn,
@@ -1124,7 +1292,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   color: var(--color-text-secondary);
   border-radius: 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .back-btn:hover,
@@ -1133,16 +1301,26 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   color: var(--color-text-primary);
 }
 
+.close-btn:hover {
+  transform: rotate(90deg);
+}
+
+.close-btn:active {
+  transform: rotate(90deg) scale(0.9);
+}
+
 .mobile-only {
   display: none;
 }
 
-/* Toolbar */
+/* ============================================
+   TOOLBAR
+   ============================================ */
 .content-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--color-toolbar-border);
 }
 
@@ -1150,17 +1328,18 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   background: var(--color-toolbar-hover);
   border: 1px solid transparent;
-  border-radius: 10px;
-  transition: all 0.15s ease;
+  border-radius: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .search-box:focus-within {
   border-color: var(--color-accent-primary);
   background: var(--color-toolbar-bg-solid);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .search-icon {
@@ -1168,6 +1347,11 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   height: 16px;
   color: var(--color-text-tertiary);
   flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.search-box:focus-within .search-icon {
+  color: var(--color-accent-primary);
 }
 
 .search-box input {
@@ -1176,31 +1360,34 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   border: none;
   background: none;
   font-size: 13px;
+  font-weight: 500;
   color: var(--color-text-primary);
   outline: none;
 }
 
 .search-box input::placeholder {
   color: var(--color-text-tertiary);
+  font-weight: 400;
 }
 
 .clear-search {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   background: var(--color-toolbar-active);
   border: none;
   border-radius: 50%;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .clear-search:hover {
   background: var(--color-text-tertiary);
   color: var(--color-toolbar-bg-solid);
+  transform: scale(1.1);
 }
 
 .clear-search :deep(svg) {
@@ -1220,52 +1407,66 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .toolbar-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-toolbar-hover);
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toolbar-btn:hover {
   background: var(--color-toolbar-active);
-  color: var(--color-text-primary);
+  color: var(--color-accent-primary);
+  transform: scale(1.05);
+}
+
+.toolbar-btn:active {
+  transform: scale(0.95);
 }
 
 .sort-select {
   background: transparent;
   border: none;
   font-size: 12px;
+  font-weight: 500;
   color: var(--color-text-secondary);
   cursor: pointer;
   outline: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.sort-select:hover {
+  background: var(--color-toolbar-hover);
 }
 
 .view-toggle {
   display: flex;
   background: var(--color-toolbar-hover);
-  border-radius: 8px;
-  padding: 2px;
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
 }
 
 .toggle-btn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toggle-btn:hover {
@@ -1274,7 +1475,8 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .toggle-btn.active {
   background: var(--color-toolbar-bg-solid);
-  color: var(--color-text-primary);
+  color: var(--color-accent-primary);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .toggle-btn :deep(svg) {
@@ -1282,11 +1484,13 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   height: 14px;
 }
 
-/* Quick Actions */
+/* ============================================
+   QUICK ACTIONS
+   ============================================ */
 .quick-actions {
   display: flex;
-  gap: 10px;
-  padding: 12px 20px;
+  gap: 12px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--color-toolbar-border);
 }
 
@@ -1294,131 +1498,204 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--color-toolbar-hover);
-  border: 1px solid transparent;
-  border-radius: 10px;
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 
 .quick-action-btn:hover {
   background: var(--color-toolbar-active);
   border-color: var(--color-toolbar-border);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.quick-action-btn:active {
+  transform: translateY(0);
 }
 
 .quick-action-btn.primary {
   background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
   border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-action-btn.primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
 .quick-action-btn.primary:hover {
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+}
+
+.quick-action-btn.primary:hover::before {
+  opacity: 1;
 }
 
 .quick-action-btn.primary .action-icon {
   background: rgba(255, 255, 255, 0.2);
   color: white;
+  backdrop-filter: blur(8px);
 }
 
 .quick-action-btn.primary .action-label,
 .quick-action-btn.primary .action-hint {
   color: white;
+  position: relative;
+  z-index: 1;
 }
 
 .quick-action-btn.primary .action-hint {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .action-icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-toolbar-bg-solid);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-accent-primary);
   flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.quick-action-btn:hover .action-icon {
+  transform: scale(1.05);
+}
+
+.action-icon :deep(svg) {
+  width: 16px;
+  height: 16px;
 }
 
 .action-content {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 
 .action-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .action-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-text-tertiary);
 }
 
-/* Trash actions */
+/* ============================================
+   TRASH ACTIONS
+   ============================================ */
 .trash-actions {
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--color-toolbar-border);
+  background: linear-gradient(180deg, 
+    rgba(239, 68, 68, 0.03) 0%, 
+    transparent 100%
+  );
 }
 
 .empty-trash-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.1);
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(239, 68, 68, 0.08);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
+  border-radius: 10px;
   color: #ef4444;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .empty-trash-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.empty-trash-btn:active {
+  transform: translateY(0);
+}
+
+.empty-trash-btn :deep(svg) {
+  width: 16px;
+  height: 16px;
 }
 
 .trash-hint {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: 12px;
   color: var(--color-text-tertiary);
+  line-height: 1.4;
 }
 
-/* Projects Container */
+/* ============================================
+   PROJECTS CONTAINER
+   ============================================ */
 .projects-container {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-text-tertiary) transparent;
 }
 
-/* Loading & Empty States */
+.projects-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.projects-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.projects-container::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 3px;
+}
+
+/* ============================================
+   LOADING & EMPTY STATES
+   ============================================ */
 .loading-state,
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 24px;
+  padding: 80px 24px;
   text-align: center;
 }
 
 .spinner {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 3px solid var(--color-toolbar-border);
   border-top-color: var(--color-accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 @keyframes spin {
@@ -1427,57 +1704,83 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .loading-state span {
   font-size: 14px;
+  font-weight: 500;
   color: var(--color-text-secondary);
 }
 
 .empty-illustration {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.empty-illustration::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, var(--color-accent-glow) 0%, transparent 70%);
+  opacity: 0.5;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 0.5; transform: scale(1.05); }
 }
 
 .empty-icon {
-  width: 64px;
-  height: 64px;
+  position: relative;
+  width: 72px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-toolbar-hover);
-  border-radius: 16px;
+  background: linear-gradient(135deg, 
+    var(--color-toolbar-hover) 0%, 
+    var(--color-toolbar-active) 100%
+  );
+  border-radius: 18px;
   color: var(--color-text-tertiary);
+  border: 1px solid var(--color-toolbar-border);
 }
 
 .empty-icon :deep(svg) {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 
 .empty-title {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   color: var(--color-text-primary);
   margin: 0 0 8px;
+  letter-spacing: -0.3px;
 }
 
 .empty-description {
   font-size: 13px;
   color: var(--color-text-secondary);
   margin: 0;
+  max-width: 260px;
+  line-height: 1.5;
 }
 
-/* Projects Grid */
+/* ============================================
+   PROJECTS GRID
+   ============================================ */
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 14px;
 }
 
 .project-card {
   position: relative;
   background: var(--color-toolbar-hover);
-  border: 1px solid transparent;
-  border-radius: 12px;
+  border: 1px solid var(--color-toolbar-border);
+  border-radius: 14px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  animation: cardIn 0.3s ease backwards;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: cardIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
   animation-delay: var(--delay);
   overflow: hidden;
 }
@@ -1485,7 +1788,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 @keyframes cardIn {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(8px);
+    transform: scale(0.92) translateY(12px);
   }
   to {
     opacity: 1;
@@ -1494,21 +1797,35 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .project-card:hover {
-  border-color: var(--color-toolbar-border);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--color-accent-primary);
+  transform: translateY(-4px);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+.dark .project-card:hover {
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .project-card.active {
   border-color: var(--color-accent-primary);
-  background: rgba(99, 102, 241, 0.08);
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.08) 0%, 
+    rgba(99, 102, 241, 0.04) 100%
+  );
 }
 
 .project-card.dragging {
   opacity: 0.5;
+  transform: scale(0.98);
 }
 
-/* Thumbnail */
+/* ============================================
+   THUMBNAIL
+   ============================================ */
 .project-thumbnail {
   position: relative;
   width: 100%;
@@ -1518,13 +1835,28 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .project-thumbnail.dark {
-  background: #1e1e1e;
+  background: #1a1a1a;
 }
 
 .project-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.project-card:hover .project-thumbnail img {
+  transform: scale(1.03);
+}
+
+/* Invert thumbnail colors when project theme doesn't match current app theme */
+.project-thumbnail.invert-for-theme {
+  /* Override background to match current theme instead of saved theme */
+  background: var(--color-toolbar-bg-solid) !important;
+}
+
+.project-thumbnail.invert-for-theme img {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 .thumbnail-placeholder {
@@ -1533,19 +1865,27 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--color-toolbar-hover), var(--color-toolbar-active));
+  background: linear-gradient(135deg, 
+    var(--color-toolbar-hover) 0%, 
+    var(--color-toolbar-active) 100%
+  );
 }
 
 .placeholder-pattern {
   position: relative;
   width: 60%;
   height: 60%;
-  opacity: 0.2;
+  opacity: 0.15;
 }
 
 .pattern-shape {
   position: absolute;
   background: var(--color-text-secondary);
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .pattern-shape {
+  opacity: 0.25;
 }
 
 .pattern-shape.rect {
@@ -1553,7 +1893,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   height: 30%;
   left: 10%;
   top: 15%;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .pattern-shape.circle {
@@ -1566,7 +1906,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .pattern-shape.line {
   width: 60%;
-  height: 3px;
+  height: 4px;
   left: 20%;
   bottom: 20%;
   border-radius: 2px;
@@ -1574,34 +1914,38 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .star-btn {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 26px;
-  height: 26px;
+  top: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-toolbar-bg-solid);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-text-tertiary);
   cursor: pointer;
   opacity: 0;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: scale(0.8);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .project-card:hover .star-btn {
   opacity: 1;
+  transform: scale(1);
 }
 
 .star-btn:hover {
   color: #eab308;
+  transform: scale(1.1);
 }
 
 .star-btn.starred {
   color: #eab308;
   opacity: 1;
+  transform: scale(1);
 }
 
 .star-btn :deep(svg) {
@@ -1611,18 +1955,19 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .active-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  background: var(--color-accent-primary);
+  gap: 5px;
+  padding: 5px 10px;
+  background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
   color: white;
   font-size: 10px;
-  font-weight: 600;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  font-weight: 700;
+  border-radius: 7px;
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.45);
+  letter-spacing: 0.3px;
 }
 
 .active-badge :deep(svg) {
@@ -1630,12 +1975,14 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   height: 10px;
 }
 
-/* Project Info */
+/* ============================================
+   PROJECT INFO
+   ============================================ */
 .project-info {
-  padding: 10px 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .project-name {
@@ -1645,7 +1992,8 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.3;
+  line-height: 1.4;
+  letter-spacing: -0.1px;
 }
 
 .project-name-input {
@@ -1653,50 +2001,57 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   font-weight: 600;
   color: var(--color-text-primary);
   background: var(--color-toolbar-bg-solid);
-  border: 1px solid var(--color-accent-primary);
-  border-radius: 6px;
-  padding: 4px 8px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 8px;
+  padding: 6px 10px;
   width: 100%;
   outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .project-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
   margin-top: 2px;
 }
 
 .more-tags {
   font-size: 10px;
+  font-weight: 500;
   color: var(--color-text-tertiary);
-  padding: 2px 4px;
+  padding: 2px 5px;
+  background: var(--color-toolbar-hover);
+  border-radius: 4px;
 }
 
 .project-date {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   font-size: 11px;
   color: var(--color-text-tertiary);
+  font-weight: 500;
 }
 
 .date-icon {
   width: 12px;
   height: 12px;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
-/* Actions Overlay */
+/* ============================================
+   ACTIONS OVERLAY
+   ============================================ */
 .project-actions {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   display: flex;
-  gap: 4px;
+  gap: 5px;
   opacity: 0;
-  transform: translateY(-4px);
-  transition: all 0.15s ease;
+  transform: translateY(-6px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
@@ -1710,21 +2065,26 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: var(--color-toolbar-bg-solid);
   color: var(--color-text-secondary);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(8px);
 }
 
 .project-action-btn:hover {
   background: var(--color-toolbar-hover);
-  color: var(--color-text-primary);
-  transform: scale(1.05);
+  color: var(--color-accent-primary);
+  transform: scale(1.1);
+}
+
+.project-action-btn:active {
+  transform: scale(0.95);
 }
 
 .project-action-btn.active {
@@ -1732,7 +2092,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .project-action-btn.delete:hover {
-  background: #fee2e2;
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
@@ -1740,30 +2100,43 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* List View */
+.project-action-btn :deep(svg) {
+  width: 13px;
+  height: 13px;
+}
+
+/* ============================================
+   LIST VIEW
+   ============================================ */
 .projects-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .project-list-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 14px;
+  padding: 12px 14px;
   background: transparent;
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .project-list-item:hover {
   background: var(--color-toolbar-hover);
+  border-color: var(--color-toolbar-border);
 }
 
 .project-list-item.active {
-  background: rgba(99, 102, 241, 0.1);
+  background: linear-gradient(135deg, 
+    rgba(99, 102, 241, 0.08) 0%, 
+    rgba(99, 102, 241, 0.04) 100%
+  );
+  border-color: rgba(99, 102, 241, 0.2);
 }
 
 .project-list-item.dragging {
@@ -1771,9 +2144,9 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .list-thumbnail {
-  width: 48px;
-  height: 32px;
-  border-radius: 6px;
+  width: 52px;
+  height: 34px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--color-toolbar-hover);
   display: flex;
@@ -1781,16 +2154,31 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   justify-content: center;
   color: var(--color-text-tertiary);
   flex-shrink: 0;
+  border: 1px solid var(--color-toolbar-border);
+  transition: all 0.2s ease;
+}
+
+.project-list-item:hover .list-thumbnail {
+  border-color: var(--color-accent-primary);
 }
 
 .list-thumbnail.dark {
-  background: #1e1e1e;
+  background: #1a1a1a;
 }
 
 .list-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Invert list thumbnail colors when project theme doesn't match current app theme */
+.list-thumbnail.invert-for-theme {
+  background: var(--color-toolbar-bg-solid) !important;
+}
+
+.list-thumbnail.invert-for-theme img {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 .list-thumbnail :deep(svg) {
@@ -1803,7 +2191,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .list-name {
@@ -1813,36 +2201,39 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: -0.1px;
 }
 
 .list-date {
   font-size: 11px;
   color: var(--color-text-tertiary);
+  font-weight: 500;
 }
 
 .list-tags {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .list-star {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-text-tertiary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .list-star:hover {
   background: var(--color-toolbar-active);
   color: #eab308;
+  transform: scale(1.1);
 }
 
 .list-star.starred {
@@ -1856,7 +2247,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 .list-actions {
   display: none;
-  gap: 4px;
+  gap: 5px;
 }
 
 .project-list-item:hover .list-actions {
@@ -1864,22 +2255,27 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .action-btn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--color-toolbar-bg-solid);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--color-text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .action-btn:hover {
   background: var(--color-toolbar-active);
-  color: var(--color-text-primary);
+  color: var(--color-accent-primary);
+  transform: scale(1.05);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
 }
 
 .action-btn.active {
@@ -1887,7 +2283,7 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 }
 
 .action-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
 }
 
@@ -1896,33 +2292,44 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   height: 14px;
 }
 
-/* Current Project Footer */
+/* ============================================
+   CURRENT PROJECT FOOTER
+   ============================================ */
 .current-project-footer {
   border-top: 1px solid var(--color-toolbar-border);
-  background: var(--color-toolbar-hover);
+  background: linear-gradient(180deg, 
+    var(--color-toolbar-hover) 0%, 
+    rgba(99, 102, 241, 0.03) 100%
+  );
   flex-shrink: 0;
 }
 
 .footer-inner {
-  padding: 12px 20px;
+  padding: 14px 20px;
 }
 
 .current-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .current-icon {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
-  border-radius: 8px;
+  border-radius: 10px;
   color: white;
   flex-shrink: 0;
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.3);
+}
+
+.current-icon :deep(svg) {
+  width: 16px;
+  height: 16px;
 }
 
 .current-details {
@@ -1930,22 +2337,23 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
 .current-name {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
   cursor: pointer;
-  padding: 2px 6px;
-  margin: -2px -6px;
-  border-radius: 6px;
-  transition: background 0.15s ease;
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
   max-width: fit-content;
+  letter-spacing: -0.1px;
 }
 
 .current-name:hover {
@@ -1956,30 +2364,32 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   width: 12px;
   height: 12px;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.2s ease;
+  color: var(--color-text-tertiary);
 }
 
 .current-name:hover .edit-hint {
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 .current-name-input {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--color-text-primary);
   background: var(--color-toolbar-bg-solid);
-  border: 1px solid var(--color-accent-primary);
-  border-radius: 6px;
-  padding: 4px 8px;
+  border: 2px solid var(--color-accent-primary);
+  border-radius: 8px;
+  padding: 6px 10px;
   outline: none;
   width: 100%;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .sync-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -2001,12 +2411,12 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.9); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }
 
 .sync-icon {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
 }
 
 /* Tag Picker Overlay */
@@ -2024,7 +2434,38 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   animation: fadeIn 0.15s ease;
 }
 
-/* Mobile Responsive */
+/* ============================================
+   TAG PICKER OVERLAY
+   ============================================ */
+.tag-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tag-picker-container {
+  animation: scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
 @media (max-width: 720px) {
   .drawer {
     width: 100%;
@@ -2041,11 +2482,28 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   .projects-grid {
     grid-template-columns: 1fr;
   }
+  
+  .content-header {
+    padding: 14px 16px;
+  }
+  
+  .content-toolbar {
+    padding: 12px 16px;
+  }
+  
+  .quick-actions {
+    padding: 12px 16px;
+  }
+  
+  .projects-container {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 480px) {
   .quick-actions {
     flex-direction: column;
+    gap: 10px;
   }
   
   .content-toolbar {
@@ -2054,6 +2512,52 @@ function setSortField(field: 'name' | 'createdAt' | 'updatedAt') {
   
   .search-box {
     width: 100%;
+    order: 1;
+  }
+  
+  .toolbar-actions {
+    order: 0;
+    margin-left: auto;
+  }
+  
+  .header-title h2 {
+    font-size: 16px;
+  }
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  .drawer-overlay,
+  .drawer,
+  .project-card,
+  .project-list-item,
+  .nav-item,
+  .quick-action-btn,
+  .star-btn,
+  .project-action-btn,
+  .action-btn,
+  .toggle-btn,
+  .toolbar-btn,
+  .close-btn,
+  .search-box,
+  .tag-picker-container {
+    transition: none;
+    animation: none;
+  }
+  
+  .spinner,
+  .sync-dot {
+    animation: none;
+  }
+  
+  .empty-illustration::before {
+    animation: none;
+  }
+  
+  .project-card:hover .project-thumbnail img {
+    transform: none;
   }
 }
 </style>

@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express'
+import { Router, Request, Response, RequestHandler } from 'express'
 import { nanoid } from 'nanoid'
 import multer from 'multer'
 import path from 'path'
@@ -51,7 +51,7 @@ const upload = multer({
 })
 
 // Upload image
-router.post('/', upload.single('image'), (req: Request, res: Response): void => {
+router.post('/', upload.single('image') as unknown as RequestHandler, (req: Request, res: Response): void => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No image file provided' })

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express'
+import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { getDb } from '../db/index.js'
 
@@ -55,7 +55,7 @@ function extractToken(req: Request): string | null {
 }
 
 // Middleware to authenticate user from JWT token
-export const authenticate: RequestHandler = (req, res, next) => {
+export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   const token = extractToken(req)
 
   if (!token) {
@@ -105,7 +105,7 @@ export const authenticate: RequestHandler = (req, res, next) => {
 }
 
 // Middleware to require paid subscription
-export const requirePaidSubscription: RequestHandler = (req, res, next) => {
+export const requirePaidSubscription = (req: Request, res: Response, next: NextFunction): void => {
   const authReq = req as AuthenticatedRequest
   
   if (!authReq.user) {
@@ -132,7 +132,7 @@ export const requirePaidSubscription: RequestHandler = (req, res, next) => {
 }
 
 // Optional authentication - doesn't fail if not authenticated
-export const optionalAuth: RequestHandler = (req, res, next) => {
+export const optionalAuth = (req: Request, res: Response, next: NextFunction): void => {
   const token = extractToken(req)
 
   if (token) {

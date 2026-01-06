@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useVisualNotesStore } from '../../stores/visualNotes'
 import { useCanvasStore } from '../../stores/canvas'
+import { useAuthStore } from '../../stores/auth'
+import { useAppStore } from '../../stores/app'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ConfirmModal from './ConfirmModal.vue'
 
@@ -11,6 +13,21 @@ const emit = defineEmits<{
 
 const visualNotesStore = useVisualNotesStore()
 const canvasStore = useCanvasStore()
+const authStore = useAuthStore()
+const appStore = useAppStore()
+
+// Fetch remaining uses on mount for free users
+onMounted(() => {
+  visualNotesStore.fetchRemainingUses()
+})
+
+// Free tier usage tracking
+const isFreeUser = computed(() => authStore.isAuthenticated && !authStore.isPaidUser)
+const hasUsesRemaining = computed(() => {
+  if (!isFreeUser.value) return true
+  return visualNotesStore.remainingUses === null || visualNotesStore.remainingUses > 0
+})
+const isOutOfUses = computed(() => isFreeUser.value && visualNotesStore.remainingUses === 0)
 
 // Tabs
 type InputTab = 'image' | 'pdf' | 'text'
@@ -51,6 +68,7 @@ const fileInfo = computed(() => {
 // Validation
 const canSubmit = computed(() => {
   if (visualNotesStore.isProcessing) return false
+  if (isOutOfUses.value) return false
   if (activeTab.value === 'text') {
     return textContent.value.trim().length > 0 && !isOverLimit.value
   }
@@ -211,6 +229,14 @@ async function handleSubmit() {
             </svg>
           </div>
           <h2 class="modal-title">Magic Notes</h2>
+          <!-- Free tier usage badge -->
+          <span 
+            v-if="isFreeUser && visualNotesStore.remainingUses !== null" 
+            class="usage-badge"
+            :class="{ 'out-of-uses': isOutOfUses }"
+          >
+            {{ visualNotesStore.remainingUses }}/{{ visualNotesStore.dailyLimit }} today
+          </span>
         </div>
         <button class="close-button" @click="emit('close')" aria-label="Close">
           <ToolIcon name="close" class="w-4 h-4" />
@@ -367,8 +393,22 @@ Example:
           </button>
         </label>
 
+        <!-- Out of uses message for free users -->
+        <div v-if="isOutOfUses" class="out-of-uses-message">
+          <div class="out-of-uses-icon">
+            <ToolIcon name="zap" class="w-5 h-5" />
+          </div>
+          <div class="out-of-uses-content">
+            <p class="out-of-uses-title">Daily limit reached</p>
+            <p class="out-of-uses-text">
+              You've used all {{ visualNotesStore.dailyLimit }} free Magic Notes for today. 
+              Upgrade to Pro for unlimited access.
+            </p>
+          </div>
+        </div>
+
         <!-- Error Display -->
-        <div v-if="visualNotesStore.error" class="error-message">
+        <div v-if="visualNotesStore.error && !isOutOfUses" class="error-message">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-icon">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4" />
@@ -383,7 +423,18 @@ Example:
         <button class="cancel-button" @click="emit('close')">
           Cancel
         </button>
+        <!-- Show upgrade button when out of uses -->
         <button
+          v-if="isOutOfUses"
+          class="upgrade-button"
+          @click="appStore.openUpgradeModal(); emit('close')"
+        >
+          <ToolIcon name="zap" class="btn-icon" />
+          Upgrade to Pro
+        </button>
+        <!-- Normal generate button -->
+        <button
+          v-else
           class="generate-button"
           :disabled="!canSubmit"
           @click="handleGenerateClick"
@@ -532,6 +583,25 @@ Example:
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 0;
+}
+
+/* Usage Badge */
+.usage-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--color-accent-primary);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.usage-badge.out-of-uses {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .close-button {
@@ -867,6 +937,47 @@ Example:
   transform: translateX(18px);
 }
 
+/* Out of Uses Message */
+.out-of-uses-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 12px;
+}
+
+.out-of-uses-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.out-of-uses-content {
+  flex: 1;
+}
+
+.out-of-uses-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+}
+
+.out-of-uses-text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* Error Message */
 .error-message {
   display: flex;
@@ -937,6 +1048,29 @@ Example:
 .generate-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Upgrade Button */
+.upgrade-button {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.upgrade-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
 }
 
 .btn-icon {

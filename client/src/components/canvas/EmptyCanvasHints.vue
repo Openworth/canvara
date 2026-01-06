@@ -193,7 +193,7 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 }
 
 .subtitle {
-  margin-top: 10px;
+  margin-top: 8px;
   font-family: var(--font-ui);
   font-size: 15px;
   font-weight: 400;
@@ -212,7 +212,7 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-top: 28px;
+  margin-top: 32px;
   opacity: 0;
   animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: 0.6s;
@@ -236,7 +236,7 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 
 .start-option-text {
   font-family: var(--font-virgil);
-  font-size: 15px;
+  font-size: 16px;
   font-style: italic;
   color: var(--color-text-tertiary);
 }
@@ -258,7 +258,7 @@ const hintColor = computed(() => appStore.isDarkMode ? 'rgba(255, 255, 255, 0.5)
 
 .start-divider {
   font-family: var(--font-virgil);
-  font-size: 14px;
+  font-size: 24px;
   font-style: italic;
   color: var(--color-text-tertiary);
   opacity: 0.6;

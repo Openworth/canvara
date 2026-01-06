@@ -1,7 +1,8 @@
-import { Router, Request, Response } from 'express'
+import express, { Router, Request, Response, RequestHandler } from 'express'
 import multer from 'multer'
 import { createRequire } from 'module'
-import { authenticate, requirePaidSubscription } from '../middleware/auth.js'
+import { authenticate, AuthenticatedRequest } from '../middleware/auth.js'
+import { getDb } from '../db/index.js'
 
 const require = createRequire(import.meta.url)
 const pdfParse = require('pdf-parse')
@@ -14,6 +15,42 @@ const LIMITS = {
   MAX_PDF_TEXT_CHARS: parseInt(process.env.VISUAL_NOTES_MAX_PDF_CHARS || '50000'),
   MAX_FILE_SIZE_MB: parseInt(process.env.VISUAL_NOTES_MAX_FILE_MB || '20'),
   MAX_OUTPUT_TOKENS: parseInt(process.env.VISUAL_NOTES_MAX_OUTPUT_TOKENS || '8000'),
+  FREE_TIER_DAILY_USES: parseInt(process.env.MAGIC_NOTES_FREE_DAILY_USES || '3'),
+}
+
+// Get the start of today (midnight UTC) as Unix timestamp
+function getTodayStartTimestamp(): number {
+  const now = new Date()
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  return Math.floor(todayStart.getTime() / 1000)
+}
+
+// Get today's usage count for a user
+function getTodayUsageCount(userId: string): number {
+  const db = getDb()
+  const todayStart = getTodayStartTimestamp()
+  const result = db.prepare(`
+    SELECT COUNT(*) as count FROM magic_notes_usage 
+    WHERE user_id = ? AND used_at >= ?
+  `).get(userId, todayStart) as { count: number }
+  return result.count
+}
+
+// Record a usage for a user
+function recordUsage(userId: string): void {
+  const db = getDb()
+  db.prepare(`
+    INSERT INTO magic_notes_usage (user_id, used_at) VALUES (?, unixepoch())
+  `).run(userId)
+}
+
+// Check if user is a paid subscriber
+function isPaidUser(user: AuthenticatedRequest['user']): boolean {
+  if (!user) return false
+  const { subscriptionStatus, subscriptionEndDate } = user
+  const now = Math.floor(Date.now() / 1000)
+  return subscriptionStatus === 'active' || 
+    (subscriptionStatus === 'canceled' && subscriptionEndDate !== null && subscriptionEndDate > now)
 }
 
 // Configure multer for memory storage
@@ -589,6 +626,7 @@ function enrichElements(elements: unknown[]): unknown[] {
       id: `visual-note-${Date.now()}-${index}`,
       angle: 0,
       strokeStyle: 'solid',
+      strokeWidth: (element.strokeWidth as number) || 2, // Default strokeWidth - important for bounds calculations
       roughness: 1,
       opacity: 100,
       seed: Math.floor(Math.random() * 2000000000),
@@ -631,9 +669,35 @@ function enrichElements(elements: unknown[]): unknown[] {
   })
 }
 
-// Main visualization endpoint - requires paid subscription
-router.post('/', authenticate, requirePaidSubscription, upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+// Main visualization endpoint - pro users unlimited, free users 3/day
+router.post('/', authenticate as unknown as RequestHandler, upload.single('file') as unknown as RequestHandler, async (req: Request, res: Response): Promise<void> => {
   try {
+    const authReq = req as AuthenticatedRequest
+    const user = authReq.user
+    
+    if (!user) {
+      res.status(401).json({ error: 'Authentication required' })
+      return
+    }
+
+    const isProUser = isPaidUser(user)
+    let remainingUses: number | null = null
+
+    // For free users, check usage limit
+    if (!isProUser) {
+      const todayUsageCount = getTodayUsageCount(user.id)
+      remainingUses = LIMITS.FREE_TIER_DAILY_USES - todayUsageCount
+      
+      if (remainingUses <= 0) {
+        res.status(403).json({ 
+          error: 'Daily limit reached. Upgrade to Pro for unlimited Magic Notes.',
+          remainingUses: 0,
+          dailyLimit: LIMITS.FREE_TIER_DAILY_USES,
+        })
+        return
+      }
+    }
+
     const { text, theme = 'light', expandContent = false } = req.body as VisualizeRequest
     const file = req.file
     const effectiveTheme: 'light' | 'dark' = theme === 'dark' ? 'dark' : 'light'
@@ -699,12 +763,53 @@ router.post('/', authenticate, requirePaidSubscription, upload.single('file'), a
     // Enrich elements with required properties
     const elements = enrichElements(typographyElements)
 
-    res.json({ elements })
+    // Record usage for free users after successful generation
+    if (!isProUser) {
+      recordUsage(user.id)
+      remainingUses = remainingUses !== null ? remainingUses - 1 : null
+    }
+
+    // Build response
+    const response: { elements: unknown[]; remainingUses?: number; dailyLimit?: number } = { elements }
+    if (!isProUser && remainingUses !== null) {
+      response.remainingUses = remainingUses
+      response.dailyLimit = LIMITS.FREE_TIER_DAILY_USES
+    }
+
+    res.json(response)
   } catch (error) {
     console.error('Visualization error:', error)
     const message = error instanceof Error ? error.message : 'Failed to generate visualization'
     res.status(500).json({ error: message })
   }
+})
+
+// Get remaining usage for free users
+router.get('/usage', authenticate as unknown as RequestHandler, (req: Request, res: Response): void => {
+  const authReq = req as AuthenticatedRequest
+  const user = authReq.user
+
+  if (!user) {
+    res.status(401).json({ error: 'Authentication required' })
+    return
+  }
+
+  const isProUser = isPaidUser(user)
+  
+  if (isProUser) {
+    // Pro users have unlimited access
+    res.json({ remainingUses: null, dailyLimit: null, isPro: true })
+    return
+  }
+
+  const todayUsageCount = getTodayUsageCount(user.id)
+  const remaining = Math.max(0, LIMITS.FREE_TIER_DAILY_USES - todayUsageCount)
+
+  res.json({
+    remainingUses: remaining,
+    dailyLimit: LIMITS.FREE_TIER_DAILY_USES,
+    isPro: false,
+  })
 })
 
 export { router as visualizeRoutes }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ExcalidrawElement } from '../types'
+import { useAuthStore } from './auth'
 
 // Get API base URL
 function getApiUrl(): string {
@@ -14,16 +15,22 @@ function getApiUrl(): string {
 
 interface VisualizeResponse {
   elements: ExcalidrawElement[]
+  remainingUses?: number
+  dailyLimit?: number
 }
 
 interface VisualizeError {
   error: string
+  remainingUses?: number
+  dailyLimit?: number
 }
 
 export const useVisualNotesStore = defineStore('visualNotes', () => {
   // State
   const isProcessing = ref(false)
   const error = ref<string | null>(null)
+  const remainingUses = ref<number | null>(null)
+  const dailyLimit = ref<number>(3)
 
   // Reset error
   function clearError() {
@@ -41,6 +48,7 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
     error.value = null
 
     try {
+      const authStore = useAuthStore()
       const formData = new FormData()
       formData.append('file', file)
       formData.append('theme', isDarkMode() ? 'dark' : 'light')
@@ -48,16 +56,31 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
 
       const response = await fetch(`${getApiUrl()}/api/visualize`, {
         method: 'POST',
+        headers: authStore.getAuthHeaders(),
         body: formData,
         credentials: 'include',
       })
 
       if (!response.ok) {
         const errorData: VisualizeError = await response.json()
+        // Update remaining uses from error response
+        if (errorData.remainingUses !== undefined) {
+          remainingUses.value = errorData.remainingUses
+        }
+        if (errorData.dailyLimit !== undefined) {
+          dailyLimit.value = errorData.dailyLimit
+        }
         throw new Error(errorData.error || 'Failed to visualize content')
       }
 
       const data: VisualizeResponse = await response.json()
+      // Update remaining uses from success response
+      if (data.remainingUses !== undefined) {
+        remainingUses.value = data.remainingUses
+      }
+      if (data.dailyLimit !== undefined) {
+        dailyLimit.value = data.dailyLimit
+      }
       return data.elements
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'An unexpected error occurred'
@@ -78,10 +101,12 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
     error.value = null
 
     try {
+      const authStore = useAuthStore()
       const response = await fetch(`${getApiUrl()}/api/visualize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authStore.getAuthHeaders(),
         },
         body: JSON.stringify({ 
           text, 
@@ -93,10 +118,24 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
 
       if (!response.ok) {
         const errorData: VisualizeError = await response.json()
+        // Update remaining uses from error response
+        if (errorData.remainingUses !== undefined) {
+          remainingUses.value = errorData.remainingUses
+        }
+        if (errorData.dailyLimit !== undefined) {
+          dailyLimit.value = errorData.dailyLimit
+        }
         throw new Error(errorData.error || 'Failed to visualize content')
       }
 
       const data: VisualizeResponse = await response.json()
+      // Update remaining uses from success response
+      if (data.remainingUses !== undefined) {
+        remainingUses.value = data.remainingUses
+      }
+      if (data.dailyLimit !== undefined) {
+        dailyLimit.value = data.dailyLimit
+      }
       return data.elements
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'An unexpected error occurred'
@@ -106,15 +145,46 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
     }
   }
 
+  // Fetch remaining uses without generating (for initial modal state)
+  async function fetchRemainingUses(): Promise<void> {
+    const authStore = useAuthStore()
+    if (!authStore.isAuthenticated) return
+    
+    // Pro users don't need to track uses
+    if (authStore.isPaidUser) {
+      remainingUses.value = null
+      return
+    }
+
+    try {
+      const response = await fetch(`${getApiUrl()}/api/visualize/usage`, {
+        method: 'GET',
+        headers: authStore.getAuthHeaders(),
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json() as { remainingUses: number; dailyLimit: number }
+        remainingUses.value = data.remainingUses
+        dailyLimit.value = data.dailyLimit
+      }
+    } catch {
+      // Silently fail - we'll get the usage info when they try to generate
+    }
+  }
+
   return {
     // State
     isProcessing,
     error,
+    remainingUses,
+    dailyLimit,
 
     // Actions
     clearError,
     visualizeFile,
     visualizeText,
+    fetchRemainingUses,
   }
 })
 

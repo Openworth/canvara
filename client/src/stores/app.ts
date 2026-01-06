@@ -37,8 +37,10 @@ export const useAppStore = defineStore('app', () => {
 
   function openVisualNotesModal() {
     const authStore = useAuthStore()
-    if (!authStore.isPaidUser) {
-      showUpgradeModal.value = true
+    // Require authentication but allow both free and pro users
+    if (!authStore.isAuthenticated) {
+      // Redirect to login
+      authStore.login()
       return
     }
     showVisualNotesModal.value = true

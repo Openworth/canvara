@@ -70,8 +70,8 @@ export function getElementBounds(element: ExcalidrawElement): BoundingBox {
     }
   }
 
-  // Account for stroke width
-  const strokePadding = element.strokeWidth / 2
+  // Account for stroke width (default to 0 if undefined to avoid NaN)
+  const strokePadding = (element.strokeWidth || 0) / 2
   minX -= strokePadding
   minY -= strokePadding
   maxX += strokePadding

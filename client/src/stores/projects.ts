@@ -180,6 +180,7 @@ export const useProjectsStore = defineStore('projects', () => {
     sort?: ProjectSortField
     order?: 'asc' | 'desc'
     recent?: boolean
+    includeAll?: boolean // Fetch all projects including trashed and archived
   }): Promise<void> {
     if (!authStore.isPaidUser) return
 
@@ -187,6 +188,41 @@ export const useProjectsStore = defineStore('projects', () => {
     error.value = null
 
     try {
+      // If includeAll is true, fetch regular, trashed, and archived projects in parallel
+      if (params?.includeAll) {
+        const [regularRes, trashedRes, archivedRes] = await Promise.all([
+          fetch(`${API_URL}/api/projects`, {
+            headers: authStore.getAuthHeaders(),
+          }),
+          fetch(`${API_URL}/api/projects?trashed=true`, {
+            headers: authStore.getAuthHeaders(),
+          }),
+          fetch(`${API_URL}/api/projects?archived=true`, {
+            headers: authStore.getAuthHeaders(),
+          }),
+        ])
+
+        if (!regularRes.ok || !trashedRes.ok || !archivedRes.ok) {
+          throw new Error('Failed to fetch projects')
+        }
+
+        const [regularData, trashedData, archivedData] = await Promise.all([
+          regularRes.json(),
+          trashedRes.json(),
+          archivedRes.json(),
+        ])
+
+        // Merge all projects (using a Map to avoid duplicates)
+        const projectMap = new Map<string, ProjectListItem>()
+        ;[...regularData.projects, ...trashedData.projects, ...archivedData.projects].forEach(p => {
+          projectMap.set(p.id, p)
+        })
+        
+        projects.value = Array.from(projectMap.values())
+        return
+      }
+
+      // Standard single-query fetch
       const queryParams = new URLSearchParams()
       
       if (params?.folder !== undefined) {

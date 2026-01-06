@@ -69,6 +69,15 @@ export function initializeSchema(db: Database.Database): void {
     )
   `)
 
+  // Magic Notes usage tracking for free tier (3 uses per day)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS magic_notes_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      used_at INTEGER DEFAULT (unixepoch())
+    )
+  `)
+
   // Add new columns to existing projects table (for migrations)
   const addColumnIfNotExists = (table: string, column: string, definition: string) => {
     try {
@@ -103,6 +112,8 @@ export function initializeSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_project_tags_tag_id ON project_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
     CREATE INDEX IF NOT EXISTS idx_users_stripe_customer_id ON users(stripe_customer_id);
+    CREATE INDEX IF NOT EXISTS idx_magic_notes_usage_user_id ON magic_notes_usage(user_id);
+    CREATE INDEX IF NOT EXISTS idx_magic_notes_usage_used_at ON magic_notes_usage(used_at);
   `)
 
   console.log('✅ Database schema initialized')
