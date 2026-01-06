@@ -4,6 +4,7 @@ import { useVisualNotesStore } from '../../stores/visualNotes'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { useAppStore } from '../../stores/app'
+import { useProjectsStore } from '../../stores/projects'
 import ToolIcon from '../toolbar/ToolIcon.vue'
 import ConfirmModal from './ConfirmModal.vue'
 
@@ -15,6 +16,7 @@ const visualNotesStore = useVisualNotesStore()
 const canvasStore = useCanvasStore()
 const authStore = useAuthStore()
 const appStore = useAppStore()
+const projectsStore = useProjectsStore()
 
 // Fetch remaining uses on mount for free users
 onMounted(() => {
@@ -145,18 +147,27 @@ function cancelConfirmation() {
 async function handleSubmit() {
   showConfirmation.value = false
   
-  // Clear the canvas first
-  canvasStore.clearCanvas()
-  
-  let elements = null
-  
-  if (activeTab.value === 'text') {
-    elements = await visualNotesStore.visualizeText(textContent.value, expandContent.value)
-  } else if (selectedFile.value) {
-    elements = await visualNotesStore.visualizeFile(selectedFile.value, expandContent.value)
+  // For PAID users: disconnect from current project to prevent overwriting
+  // For FREE users: no project operations needed, just overwrite localStorage
+  if (authStore.isPaidUser) {
+    projectsStore.disconnectFromProject()
   }
   
-  if (elements && elements.length > 0) {
+  // Clear the canvas
+  canvasStore.clearCanvas()
+  
+  let result = null
+  
+  if (activeTab.value === 'text') {
+    result = await visualNotesStore.visualizeText(textContent.value, expandContent.value)
+  } else if (selectedFile.value) {
+    result = await visualNotesStore.visualizeFile(selectedFile.value, expandContent.value)
+  }
+  
+  if (result && result.elements && result.elements.length > 0) {
+    const elements = result.elements
+    const suggestedName = result.suggestedProjectName || 'Magic Notes'
+    
     // Calculate viewport center for positioning
     const viewportWidth = window.innerWidth
     const viewportHeight = window.innerHeight
@@ -199,6 +210,13 @@ async function handleSubmit() {
     
     // Switch to selection tool
     canvasStore.setActiveTool('selection')
+    
+    // PAID users: Create a new project with the AI-suggested name
+    // This ensures Magic Notes output is always saved to a NEW project
+    // FREE users: Content stays in localStorage only (handled by canvas store auto-save)
+    if (authStore.isPaidUser) {
+      await projectsStore.createProject(suggestedName)
+    }
     
     // Close modal
     emit('close')
@@ -473,11 +491,13 @@ Example:
     <Teleport to="body">
       <ConfirmModal
         v-if="showConfirmation"
-        title="Clear Canvas?"
-        message="Magic Notes will replace all current content on your canvas. This action cannot be undone."
-        confirm-text="Clear & Generate"
+        :title="authStore.isPaidUser && projectsStore.currentProjectId ? 'Create New Project?' : 'Replace Canvas?'"
+        :message="authStore.isPaidUser && projectsStore.currentProjectId 
+          ? 'Magic Notes will create a new project with the generated content. Your current project will be saved and remain unchanged.' 
+          : 'Magic Notes will replace the current canvas content with the generated visualization. This action cannot be undone.'"
+        confirm-text="Generate"
         cancel-text="Cancel"
-        :danger="true"
+        :danger="!authStore.isPaidUser || !projectsStore.currentProjectId"
         @confirm="handleSubmit"
         @cancel="cancelConfirmation"
       />

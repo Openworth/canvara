@@ -470,6 +470,100 @@ async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   }
 }
 
+// Generate a short, descriptive project name from content
+async function generateProjectName(
+  content: string,
+  isImage: boolean = false,
+  imageBase64?: string,
+  imageMimeType?: string
+): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) {
+    return 'Magic Notes'
+  }
+
+  const selectedModel = process.env.OPENROUTER_MODEL || 'anthropic/claude-sonnet-4'
+
+  try {
+    interface TextContent {
+      type: 'text'
+      text: string
+    }
+
+    interface ImageContent {
+      type: 'image_url'
+      image_url: {
+        url: string
+      }
+    }
+
+    type MessageContent = TextContent | ImageContent
+
+    const userContent: MessageContent[] = []
+
+    if (isImage && imageBase64 && imageMimeType) {
+      userContent.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${imageMimeType};base64,${imageBase64}`,
+        },
+      })
+      userContent.push({
+        type: 'text',
+        text: 'Generate a short, descriptive project name (2-5 words) for this image content. Just respond with the name, nothing else.',
+      })
+    } else {
+      // Take first 500 chars for name generation
+      const preview = content.substring(0, 500)
+      userContent.push({
+        type: 'text',
+        text: `Generate a short, descriptive project name (2-5 words) for this content. Just respond with the name, nothing else.\n\nContent:\n${preview}`,
+      })
+    }
+
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:5173',
+        'X-Title': 'Canvara Magic Notes - Name Generation',
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You generate short, descriptive project names. Respond with ONLY the name (2-5 words), no quotes, no punctuation, no explanation.' 
+          },
+          { role: 'user', content: userContent },
+        ],
+        temperature: 0.7,
+        max_tokens: 50,
+      }),
+    })
+
+    if (!response.ok) {
+      return 'Magic Notes'
+    }
+
+    const data = await response.json() as {
+      choices: Array<{ message: { content: string } }>
+    }
+
+    const name = data.choices?.[0]?.message?.content?.trim()
+    if (name && name.length > 0 && name.length <= 50) {
+      // Clean up the name - remove quotes, extra punctuation
+      return name.replace(/^["']|["']$/g, '').trim() || 'Magic Notes'
+    }
+
+    return 'Magic Notes'
+  } catch (error) {
+    console.warn('Failed to generate project name:', error)
+    return 'Magic Notes'
+  }
+}
+
 // Call OpenRouter API
 async function callOpenRouter(
   content: string,
@@ -1329,8 +1423,11 @@ router.post('/', authenticate as unknown as RequestHandler, upload.single('file'
     }
 
     // ========================================
-    // 3-AGENT PIPELINE
+    // 3-AGENT PIPELINE + PROJECT NAME GENERATION
     // ========================================
+    
+    // Generate project name in parallel with diagram generation
+    const projectNamePromise = generateProjectName(content, isImage, imageBase64, imageMimeType)
     
     // AGENT 1: Generate diagram structure (text, containers, relationships)
     console.log('Magic Notes: Starting Agent 1 - Diagram Structure...')
@@ -1374,8 +1471,15 @@ router.post('/', authenticate as unknown as RequestHandler, upload.single('file'
       remainingUses = remainingUses !== null ? remainingUses - 1 : null
     }
 
+    // Wait for project name generation to complete
+    const suggestedProjectName = await projectNamePromise
+    console.log(`Magic Notes: Suggested project name: "${suggestedProjectName}"`)
+
     // Build response
-    const response: { elements: unknown[]; remainingUses?: number; dailyLimit?: number } = { elements }
+    const response: { elements: unknown[]; suggestedProjectName: string; remainingUses?: number; dailyLimit?: number } = { 
+      elements, 
+      suggestedProjectName 
+    }
     if (!isProUser && remainingUses !== null) {
       response.remainingUses = remainingUses
       response.dailyLimit = LIMITS.FREE_TIER_DAILY_USES

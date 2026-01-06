@@ -15,8 +15,14 @@ function getApiUrl(): string {
 
 interface VisualizeResponse {
   elements: ExcalidrawElement[]
+  suggestedProjectName: string
   remainingUses?: number
   dailyLimit?: number
+}
+
+interface VisualizeResult {
+  elements: ExcalidrawElement[]
+  suggestedProjectName: string
 }
 
 interface VisualizeError {
@@ -43,7 +49,7 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
   }
 
   // Visualize from a file (image or PDF)
-  async function visualizeFile(file: File, expandContent: boolean = false): Promise<ExcalidrawElement[] | null> {
+  async function visualizeFile(file: File, expandContent: boolean = false): Promise<VisualizeResult | null> {
     isProcessing.value = true
     error.value = null
 
@@ -81,7 +87,10 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
       if (data.dailyLimit !== undefined) {
         dailyLimit.value = data.dailyLimit
       }
-      return data.elements
+      return {
+        elements: data.elements,
+        suggestedProjectName: data.suggestedProjectName,
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'An unexpected error occurred'
       return null
@@ -91,7 +100,7 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
   }
 
   // Visualize from text content
-  async function visualizeText(text: string, expandContent: boolean = false): Promise<ExcalidrawElement[] | null> {
+  async function visualizeText(text: string, expandContent: boolean = false): Promise<VisualizeResult | null> {
     if (!text.trim()) {
       error.value = 'Please provide some text content'
       return null
@@ -136,7 +145,10 @@ export const useVisualNotesStore = defineStore('visualNotes', () => {
       if (data.dailyLimit !== undefined) {
         dailyLimit.value = data.dailyLimit
       }
-      return data.elements
+      return {
+        elements: data.elements,
+        suggestedProjectName: data.suggestedProjectName,
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'An unexpected error occurred'
       return null
