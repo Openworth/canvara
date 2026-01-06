@@ -93,27 +93,27 @@ const features = [
         </div>
       </div>
 
-      <!-- Hint pointing to toolbar (left side) -->
+      <!-- Hint pointing to toolbar (top-left) -->
       <div class="hint-toolbar">
         <svg 
-          width="100" 
-          height="40" 
-          viewBox="0 0 100 40" 
+          width="60" 
+          height="80" 
+          viewBox="0 0 60 80" 
           fill="none"
           class="hint-arrow"
         >
-          <!-- Hand-drawn style wavy arrow pointing left -->
+          <!-- Hand-drawn curved arrow pointing up-left towards toolbar -->
           <path 
-            d="M95 20 C 80 18, 65 23, 50 20 C 35 17, 25 22, 12 20"
+            d="M50 78 C 45 60, 35 45, 25 30 C 18 20, 12 12, 8 5"
             :stroke="hintColor"
             stroke-width="2"
             stroke-linecap="round"
             fill="none"
             class="arrow-line"
           />
-          <!-- Arrowhead -->
+          <!-- Arrowhead pointing up-left -->
           <path 
-            d="M22 12 L8 20 L22 28"
+            d="M3 14 L6 3 L17 6"
             :stroke="hintColor"
             stroke-width="2"
             stroke-linecap="round"
@@ -316,19 +316,22 @@ const features = [
    ARROW HINTS - Repositioned
    ============================================ */
 
-/* Toolbar hint - positioned left, vertically centered */
+/* Toolbar hint - positioned to point to top-left toolbar */
 .hint-toolbar {
   position: absolute;
-  left: 80px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 180px;
+  top: 150px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .hint-arrow {
   flex-shrink: 0;
+  position: absolute;
+  top: -80px;
+  left: -10px;
 }
 
 .hint-text {
@@ -449,8 +452,9 @@ const features = [
   }
   
   .hint-toolbar .hint-arrow {
-    /* Rotate arrow to point down - counterclockwise so arrowhead ends at bottom */
-    transform: rotate(-90deg);
+    position: static;
+    /* Rotate arrow to point down */
+    transform: rotate(90deg) scaleX(-1);
   }
   
   /* Collab hint: positioned top-left, pointing to sidebar toggle */

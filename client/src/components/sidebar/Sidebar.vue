@@ -664,7 +664,7 @@ const opacity = computed(() =>
 
 .sidebar-container {
   position: absolute;
-  right: 16px;
+  left: 16px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
@@ -682,7 +682,7 @@ const opacity = computed(() =>
 .sidebar-enter-from,
 .sidebar-leave-to {
   opacity: 0;
-  transform: translateY(-50%) translateX(20px);
+  transform: translateY(-50%) translateX(-20px);
 }
 
 .sidebar-enter-to,

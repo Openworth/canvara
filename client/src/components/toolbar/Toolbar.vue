@@ -183,7 +183,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- Desktop: Left vertical toolbar -->
+  <!-- Desktop: Top horizontal toolbar -->
   <div
     v-if="!isMobile"
     v-show="!appStore.showExportModal"
@@ -197,7 +197,7 @@ onUnmounted(() => {
           class="tool-btn"
           :class="{ 'disabled': !canvasStore.canUndo }"
           :disabled="!canvasStore.canUndo"
-          v-tooltip.right="'Undo (Ctrl+Z)'"
+          v-tooltip.bottom="'Undo (Ctrl+Z)'"
           @click="canvasStore.undo()"
         >
           <ToolIcon name="undo" class="w-4 h-4" />
@@ -206,7 +206,7 @@ onUnmounted(() => {
           class="tool-btn"
           :class="{ 'disabled': !canvasStore.canRedo }"
           :disabled="!canvasStore.canRedo"
-          v-tooltip.right="'Redo (Ctrl+Shift+Z)'"
+          v-tooltip.bottom="'Redo (Ctrl+Shift+Z)'"
           @click="canvasStore.redo()"
         >
           <ToolIcon name="redo" class="w-4 h-4" />
@@ -223,7 +223,7 @@ onUnmounted(() => {
           :key="tool.id"
           class="tool-btn"
           :class="{ 'active': activeTool === tool.id }"
-          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          v-tooltip.bottom="`${tool.label} (${tool.shortcut})`"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
@@ -240,7 +240,7 @@ onUnmounted(() => {
           :key="tool.id"
           class="tool-btn"
           :class="{ 'active': activeTool === tool.id }"
-          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          v-tooltip.bottom="`${tool.label} (${tool.shortcut})`"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
@@ -257,7 +257,7 @@ onUnmounted(() => {
           :key="tool.id"
           class="tool-btn"
           :class="{ 'active': activeTool === tool.id }"
-          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          v-tooltip.bottom="`${tool.label} (${tool.shortcut})`"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
@@ -274,7 +274,7 @@ onUnmounted(() => {
           :key="tool.id"
           class="tool-btn"
           :class="{ 'active': activeTool === tool.id }"
-          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          v-tooltip.bottom="`${tool.label} (${tool.shortcut})`"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
@@ -291,7 +291,7 @@ onUnmounted(() => {
           :key="tool.id"
           class="tool-btn"
           :class="{ 'active': activeTool === tool.id }"
-          v-tooltip.right="`${tool.label} (${tool.shortcut})`"
+          v-tooltip.bottom="`${tool.label} (${tool.shortcut})`"
           @click="selectTool(tool.id)"
         >
           <ToolIcon :name="tool.icon" class="w-4 h-4" />
@@ -426,66 +426,57 @@ onUnmounted(() => {
 
 .toolbar-container {
   position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
+  left: 55px;
+  top: 14px;
+  z-index: 25;
   display: flex;
-  animation: toolbarSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: toolbarSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes toolbarSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-20px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0);
+    transform: translateY(0);
   }
 }
 
 .toolbar-inner {
   display: flex;
-  flex-direction: column;
-  padding: 8px 6px;
-  gap: 3px;
-  background: var(--color-toolbar-bg);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  flex-direction: row;
+  align-items: center;
+  height: 34px;
+  padding: 0 4px;
+  gap: 2px;
+  background: var(--color-toolbar-bg-solid);
   border: 1px solid var(--color-toolbar-border);
-  border-radius: 12px;
-  box-shadow: 
-    0 8px 32px -8px rgba(0, 0, 0, 0.12),
-    0 4px 16px -4px rgba(0, 0, 0, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+  border-radius: var(--radius-sm);
 }
 
 .dark .toolbar-inner {
-  box-shadow: 
-    0 8px 32px -12px rgba(0, 0, 0, 0.25),
-    0 4px 16px -6px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  /* Same styling for dark mode */
 }
 
 .tool-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 1px;
-  animation: toolGroupFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  animation-delay: calc(var(--group-index, 0) * 0.05s);
+  animation: toolGroupFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--group-index, 0) * 0.03s);
   opacity: 0;
 }
 
 @keyframes toolGroupFadeIn {
   from {
     opacity: 0;
-    transform: translateX(-8px);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
@@ -493,14 +484,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
   position: relative;
   overflow: hidden;
 }
@@ -512,12 +503,11 @@ onUnmounted(() => {
   border-radius: inherit;
   background: var(--color-toolbar-hover);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
 
 .tool-btn:hover {
   color: var(--color-text-primary);
-  transform: scale(1.08);
 }
 
 .tool-btn:hover::before {
@@ -525,16 +515,15 @@ onUnmounted(() => {
 }
 
 .tool-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 .tool-btn.active {
   color: white;
   background: linear-gradient(135deg, var(--color-accent-primary) 0%, var(--color-accent-secondary) 100%);
   box-shadow: 
-    0 0 0 3px var(--color-accent-glow),
-    0 4px 12px -2px rgba(99, 102, 241, 0.4);
-  transform: scale(1);
+    0 0 0 2px var(--color-accent-glow),
+    0 2px 6px -1px rgba(99, 102, 241, 0.35);
 }
 
 .tool-btn.active::before {
@@ -542,10 +531,9 @@ onUnmounted(() => {
 }
 
 .tool-btn.active:hover {
-  transform: scale(1.05);
   box-shadow: 
-    0 0 0 4px var(--color-accent-glow),
-    0 6px 16px -2px rgba(99, 102, 241, 0.5);
+    0 0 0 3px var(--color-accent-glow),
+    0 3px 8px -1px rgba(99, 102, 241, 0.45);
 }
 
 .tool-btn.disabled {
@@ -554,15 +542,10 @@ onUnmounted(() => {
 }
 
 .tool-divider {
-  height: 1px;
-  margin: 3px 5px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-toolbar-border) 20%,
-    var(--color-toolbar-border) 80%,
-    transparent 100%
-  );
+  width: 1px;
+  height: 20px;
+  margin: 0 3px;
+  background: var(--color-toolbar-border);
 }
 
 /* ============================================
