@@ -4,7 +4,8 @@ import { useAuthStore } from './auth'
 import { useAppStore } from './app'
 import { useCanvasStore } from './canvas'
 import { useImageStore } from './images'
-import type { ExcalidrawElement, AppState } from '../types'
+import type { ExcalidrawElement, AppState, Tag, ProjectSortField, ProjectView, ViewMode } from '../types'
+import type { ProjectListItem as SharedProjectListItem } from '../../../shared/types'
 import rough from 'roughjs'
 
 export interface Project {
@@ -13,18 +14,17 @@ export interface Project {
   elements: ExcalidrawElement[]
   appState: AppState | null
   thumbnail: string | null
+  folderId: string | null
+  isStarred: boolean
+  isArchived: boolean
+  isTrashed: boolean
+  trashedAt: number | null
+  tags: Tag[]
   createdAt: number
   updatedAt: number
 }
 
-export interface ProjectListItem {
-  id: string
-  name: string
-  thumbnail: string | null
-  isDarkTheme: boolean
-  createdAt: number
-  updatedAt: number
-}
+export type ProjectListItem = SharedProjectListItem
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -69,6 +69,15 @@ export const useProjectsStore = defineStore('projects', () => {
   const lastSavedAt = ref<number | null>(null)
   const error = ref<string | null>(null)
 
+  // View/Filter State
+  const currentView = ref<ProjectView>('all')
+  const currentFolderId = ref<string | null>(null)
+  const searchQuery = ref('')
+  const selectedTagIds = ref<string[]>([])
+  const sortField = ref<ProjectSortField>('updatedAt')
+  const sortOrder = ref<'asc' | 'desc'>('desc')
+  const viewMode = ref<ViewMode>('grid')
+
   // Debounce timer for auto-save
   let saveTimeout: ReturnType<typeof setTimeout> | null = null
 
@@ -80,15 +89,120 @@ export const useProjectsStore = defineStore('projects', () => {
 
   const isCloudProject = computed(() => !!currentProjectId.value)
 
+  // Filtered and sorted projects based on current view and filters
+  const filteredProjects = computed(() => {
+    let result = [...projects.value]
+
+    // Filter by view type
+    switch (currentView.value) {
+      case 'starred':
+        result = result.filter(p => p.isStarred && !p.isTrashed && !p.isArchived)
+        break
+      case 'archived':
+        result = result.filter(p => p.isArchived && !p.isTrashed)
+        break
+      case 'trashed':
+        result = result.filter(p => p.isTrashed)
+        break
+      case 'recent':
+        const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60)
+        result = result.filter(p => p.updatedAt >= sevenDaysAgo && !p.isTrashed && !p.isArchived)
+        break
+      case 'folder':
+        result = result.filter(p => {
+          if (currentFolderId.value === null) {
+            return p.folderId === null && !p.isTrashed && !p.isArchived
+          }
+          return p.folderId === currentFolderId.value && !p.isTrashed && !p.isArchived
+        })
+        break
+      case 'all':
+      default:
+        result = result.filter(p => !p.isTrashed && !p.isArchived)
+        break
+    }
+
+    // Filter by search query
+    if (searchQuery.value.trim()) {
+      const query = searchQuery.value.toLowerCase().trim()
+      result = result.filter(p => p.name.toLowerCase().includes(query))
+    }
+
+    // Filter by tags (all selected tags must be present)
+    if (selectedTagIds.value.length > 0) {
+      result = result.filter(p => {
+        const projectTagIds = p.tags.map(t => t.id)
+        return selectedTagIds.value.every(tagId => projectTagIds.includes(tagId))
+      })
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0
+      switch (sortField.value) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name)
+          break
+        case 'createdAt':
+          comparison = a.createdAt - b.createdAt
+          break
+        case 'updatedAt':
+        default:
+          comparison = a.updatedAt - b.updatedAt
+          break
+      }
+      return sortOrder.value === 'asc' ? comparison : -comparison
+    })
+
+    return result
+  })
+
+  // Count projects by view
+  const projectCounts = computed(() => {
+    const sevenDaysAgo = Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60)
+    return {
+      all: projects.value.filter(p => !p.isTrashed && !p.isArchived).length,
+      recent: projects.value.filter(p => p.updatedAt >= sevenDaysAgo && !p.isTrashed && !p.isArchived).length,
+      starred: projects.value.filter(p => p.isStarred && !p.isTrashed && !p.isArchived).length,
+      archived: projects.value.filter(p => p.isArchived && !p.isTrashed).length,
+      trashed: projects.value.filter(p => p.isTrashed).length,
+    }
+  })
+
   // Actions
-  async function fetchProjects(): Promise<void> {
+  async function fetchProjects(params?: {
+    folder?: string | null
+    starred?: boolean
+    archived?: boolean
+    trashed?: boolean
+    tags?: string[]
+    search?: string
+    sort?: ProjectSortField
+    order?: 'asc' | 'desc'
+    recent?: boolean
+  }): Promise<void> {
     if (!authStore.isPaidUser) return
 
     isLoading.value = true
     error.value = null
 
     try {
-      const response = await fetch(`${API_URL}/api/projects`, {
+      const queryParams = new URLSearchParams()
+      
+      if (params?.folder !== undefined) {
+        queryParams.set('folder', params.folder || 'null')
+      }
+      if (params?.starred) queryParams.set('starred', 'true')
+      if (params?.archived) queryParams.set('archived', 'true')
+      if (params?.trashed) queryParams.set('trashed', 'true')
+      if (params?.tags?.length) queryParams.set('tags', params.tags.join(','))
+      if (params?.search) queryParams.set('search', params.search)
+      if (params?.sort) queryParams.set('sort', params.sort)
+      if (params?.order) queryParams.set('order', params.order)
+      if (params?.recent) queryParams.set('recent', 'true')
+
+      const url = `${API_URL}/api/projects${queryParams.toString() ? `?${queryParams}` : ''}`
+      const response = await fetch(url, {
         headers: authStore.getAuthHeaders(),
       })
 
@@ -165,7 +279,7 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
-  async function createProject(name?: string): Promise<string | null> {
+  async function createProject(name?: string, folderId?: string | null): Promise<string | null> {
     if (!authStore.isPaidUser) return null
 
     isLoading.value = true
@@ -184,6 +298,7 @@ export const useProjectsStore = defineStore('projects', () => {
           elements,
           appState,
           thumbnail,
+          folderId: folderId ?? currentFolderId.value,
         }),
       })
 
@@ -199,6 +314,13 @@ export const useProjectsStore = defineStore('projects', () => {
         id: project.id,
         name: project.name,
         thumbnail: project.thumbnail,
+        isDarkTheme: isColorDark(appState.viewBackgroundColor),
+        folderId: project.folderId,
+        isStarred: project.isStarred,
+        isArchived: project.isArchived,
+        isTrashed: project.isTrashed,
+        trashedAt: project.trashedAt,
+        tags: project.tags,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       })
@@ -253,6 +375,7 @@ export const useProjectsStore = defineStore('projects', () => {
           ...projects.value[index],
           name: currentProjectName.value,
           thumbnail: data.project.thumbnail,
+          isDarkTheme: isColorDark(appState.viewBackgroundColor),
           updatedAt: data.project.updatedAt,
         }
       }
@@ -280,8 +403,21 @@ export const useProjectsStore = defineStore('projects', () => {
         throw new Error('Failed to delete project')
       }
 
-      // Remove from list
-      projects.value = projects.value.filter(p => p.id !== projectId)
+      // Update in list - mark as trashed or remove if was already trashed
+      const project = projects.value.find(p => p.id === projectId)
+      if (project?.isTrashed) {
+        projects.value = projects.value.filter(p => p.id !== projectId)
+      } else {
+        const index = projects.value.findIndex(p => p.id === projectId)
+        if (index !== -1) {
+          const now = Math.floor(Date.now() / 1000)
+          projects.value[index] = {
+            ...projects.value[index],
+            isTrashed: true,
+            trashedAt: now,
+          }
+        }
+      }
 
       // If this was the current project, clear it
       if (currentProjectId.value === projectId) {
@@ -294,6 +430,239 @@ export const useProjectsStore = defineStore('projects', () => {
     } catch (e) {
       error.value = (e as Error).message
       console.error('Failed to delete project:', e)
+      return false
+    }
+  }
+
+  async function permanentlyDeleteProject(projectId: string): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/permanent`, {
+        method: 'DELETE',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to permanently delete project')
+      }
+
+      projects.value = projects.value.filter(p => p.id !== projectId)
+
+      if (currentProjectId.value === projectId) {
+        currentProjectId.value = null
+        currentProjectName.value = 'Untitled'
+        lastSavedAt.value = null
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to permanently delete project:', e)
+      return false
+    }
+  }
+
+  async function restoreProject(projectId: string): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/restore`, {
+        method: 'POST',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to restore project')
+      }
+
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          isTrashed: false,
+          trashedAt: null,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to restore project:', e)
+      return false
+    }
+  }
+
+  async function emptyTrash(): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/trash/empty`, {
+        method: 'DELETE',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to empty trash')
+      }
+
+      projects.value = projects.value.filter(p => !p.isTrashed)
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to empty trash:', e)
+      return false
+    }
+  }
+
+  async function toggleStarred(projectId: string): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/star`, {
+        method: 'POST',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle starred')
+      }
+
+      const data = await response.json()
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          isStarred: data.isStarred,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to toggle starred:', e)
+      return false
+    }
+  }
+
+  async function toggleArchived(projectId: string): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/archive`, {
+        method: 'POST',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle archived')
+      }
+
+      const data = await response.json()
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          isArchived: data.isArchived,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to toggle archived:', e)
+      return false
+    }
+  }
+
+  async function moveToFolder(projectId: string, folderId: string | null): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/move`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
+        body: JSON.stringify({ folderId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to move project')
+      }
+
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          folderId,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to move project:', e)
+      return false
+    }
+  }
+
+  async function addTagsToProject(projectId: string, tagIds: string[]): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authStore.getAuthHeaders() },
+        body: JSON.stringify({ tagIds }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to add tags')
+      }
+
+      const data = await response.json()
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          tags: data.tags,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to add tags:', e)
+      return false
+    }
+  }
+
+  async function removeTagFromProject(projectId: string, tagId: string): Promise<boolean> {
+    if (!authStore.isPaidUser) return false
+
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectId}/tags/${tagId}`, {
+        method: 'DELETE',
+        headers: authStore.getAuthHeaders(),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove tag')
+      }
+
+      const data = await response.json()
+      const index = projects.value.findIndex(p => p.id === projectId)
+      if (index !== -1) {
+        projects.value[index] = {
+          ...projects.value[index],
+          tags: data.tags,
+        }
+      }
+
+      return true
+    } catch (e) {
+      error.value = (e as Error).message
+      console.error('Failed to remove tag:', e)
       return false
     }
   }
@@ -319,6 +688,13 @@ export const useProjectsStore = defineStore('projects', () => {
         id: project.id,
         name: project.name,
         thumbnail: project.thumbnail,
+        isDarkTheme: false,
+        folderId: project.folderId,
+        isStarred: project.isStarred,
+        isArchived: project.isArchived,
+        isTrashed: project.isTrashed,
+        trashedAt: project.trashedAt,
+        tags: project.tags,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
       })
@@ -358,6 +734,36 @@ export const useProjectsStore = defineStore('projects', () => {
   function newProject() {
     disconnectFromProject()
     canvasStore.clearCanvas()
+  }
+
+  // View/Filter setters
+  function setView(view: ProjectView, folderId?: string | null) {
+    currentView.value = view
+    if (view === 'folder') {
+      currentFolderId.value = folderId ?? null
+    }
+  }
+
+  function setSearchQuery(query: string) {
+    searchQuery.value = query
+  }
+
+  function setSelectedTags(tagIds: string[]) {
+    selectedTagIds.value = tagIds
+  }
+
+  function setSort(field: ProjectSortField, order: 'asc' | 'desc') {
+    sortField.value = field
+    sortOrder.value = order
+  }
+
+  function setViewMode(mode: ViewMode) {
+    viewMode.value = mode
+  }
+
+  function clearFilters() {
+    searchQuery.value = ''
+    selectedTagIds.value = []
   }
 
   // Generate thumbnail from canvas
@@ -587,9 +993,20 @@ export const useProjectsStore = defineStore('projects', () => {
     lastSavedAt,
     error,
 
+    // View/Filter State
+    currentView,
+    currentFolderId,
+    searchQuery,
+    selectedTagIds,
+    sortField,
+    sortOrder,
+    viewMode,
+
     // Computed
     currentProject,
     isCloudProject,
+    filteredProjects,
+    projectCounts,
 
     // Actions
     fetchProjects,
@@ -597,11 +1014,26 @@ export const useProjectsStore = defineStore('projects', () => {
     createProject,
     saveProject,
     deleteProject,
+    permanentlyDeleteProject,
+    restoreProject,
+    emptyTrash,
+    toggleStarred,
+    toggleArchived,
+    moveToFolder,
+    addTagsToProject,
+    removeTagFromProject,
     duplicateProject,
     renameProject,
     newProject,
     disconnectFromProject,
     debouncedSave,
+
+    // View/Filter Actions
+    setView,
+    setSearchQuery,
+    setSelectedTags,
+    setSort,
+    setViewMode,
+    clearFilters,
   }
 })
-

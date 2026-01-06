@@ -227,3 +227,75 @@ export type TransformHandle =
   | 'rotation'
   | 'start' | 'end'  // For line/arrow endpoints
 
+// ============================================
+// Project Management Types
+// ============================================
+
+// Folder for organizing projects
+export interface Folder {
+  id: string
+  name: string
+  color: string
+  sortOrder: number
+  projectCount: number
+  createdAt: number
+  updatedAt: number
+}
+
+// Tag for labeling projects (colored labels)
+export interface Tag {
+  id: string
+  name: string
+  color: string  // hex color
+  projectCount?: number
+  createdAt: number
+}
+
+// Project list item (lightweight version for lists)
+export interface ProjectListItem {
+  id: string
+  name: string
+  thumbnail: string | null
+  isDarkTheme: boolean
+  folderId: string | null
+  isStarred: boolean
+  isArchived: boolean
+  isTrashed: boolean
+  trashedAt: number | null
+  tags: Tag[]
+  createdAt: number
+  updatedAt: number
+}
+
+// Full project data
+export interface Project extends ProjectListItem {
+  elements: ExcalidrawElement[]
+  appState: AppState | null
+}
+
+// Project sort options
+export type ProjectSortField = 'name' | 'createdAt' | 'updatedAt'
+
+// Project view types
+export type ProjectView = 'all' | 'recent' | 'starred' | 'archived' | 'trashed' | 'folder'
+
+// View mode for project list
+export type ViewMode = 'grid' | 'list'
+
+// Tag color palette
+export const TAG_COLORS = [
+  '#ef4444', // Red
+  '#f97316', // Orange
+  '#eab308', // Yellow
+  '#22c55e', // Green
+  '#14b8a6', // Teal
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+  '#a855f7', // Purple
+  '#ec4899', // Pink
+  '#6b7280', // Gray
+] as const
+
+// Folder color palette (same as tags for consistency)
+export const FOLDER_COLORS = TAG_COLORS
+

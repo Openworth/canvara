@@ -34,8 +34,10 @@ import {
   ChevronUp,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   GripHorizontal,
   Folder,
+  FolderPlus,
   CreditCard,
   LogIn,
   LogOut,
@@ -52,6 +54,13 @@ import {
   Layers,
   Clock,
   File,
+  Archive,
+  Tag,
+  ArrowDownUp,
+  ArrowUpDown,
+  List,
+  Home,
+  Search,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
@@ -93,9 +102,12 @@ const iconMap: Record<string, any> = {
   more: MoreHorizontal,
   chevronUp: ChevronUp,
   chevronDown: ChevronDown,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
   grip: GripHorizontal,
   folder: Folder,
   folderOpen: FolderOpen,
+  folderPlus: FolderPlus,
   creditCard: CreditCard,
   logIn: LogIn,
   logOut: LogOut,
@@ -105,6 +117,7 @@ const iconMap: Record<string, any> = {
   crown: Crown,
   sparkles: Sparkles,
   star: Star,
+  starFilled: Star, // Same icon, can be styled differently
   panelLeft: PanelLeft,
   bringToFront: ArrowUpToLine,
   sendToBack: ArrowDownToLine,
@@ -113,7 +126,13 @@ const iconMap: Record<string, any> = {
   layers: Layers,
   clock: Clock,
   file: File,
-  chevronLeft: ChevronLeft,
+  archive: Archive,
+  tag: Tag,
+  sortAsc: ArrowUpDown,
+  sortDesc: ArrowDownUp,
+  list: List,
+  home: Home,
+  search: Search,
 }
 
 const IconComponent = computed(() => iconMap[props.name] || HelpCircle)

@@ -9,6 +9,8 @@ import { setupWebSocket } from './websocket/handler.js'
 import { roomRoutes } from './routes/rooms.js'
 import { authRoutes } from './routes/auth.js'
 import { projectRoutes } from './routes/projects.js'
+import { folderRoutes } from './routes/folders.js'
+import { tagRoutes } from './routes/tags.js'
 import { billingRoutes } from './routes/billing.js'
 import { imageRoutes } from './routes/images.js'
 import { visualizeRoutes } from './routes/visualize.js'
@@ -71,6 +73,8 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/projects', projectRoutes)
+app.use('/api/folders', folderRoutes)
+app.use('/api/tags', tagRoutes)
 app.use('/api/billing', billingRoutes)
 app.use('/api/rooms', roomRoutes)
 app.use('/api/images', imageRoutes)
